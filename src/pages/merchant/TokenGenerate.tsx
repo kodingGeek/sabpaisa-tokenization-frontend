@@ -8,133 +8,86 @@ import {
   TextField,
   Button,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Alert,
+  Divider,
   Stepper,
   Step,
   StepLabel,
-  Chip,
-  Divider,
-  Paper,
-  IconButton,
-  Tooltip,
-  FormHelperText,
-  InputAdornment,
 } from '@mui/material';
-import {
-  CreditCard,
-  Security,
-  Info,
-  ContentCopy,
-  Download,
-  CheckCircle,
-} from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
+import { CreditCard, Security } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import tokenizationService from '../../services/tokenizationService';
 
-interface TokenGenerationForm {
-  cardNumber: string;
-  expiryMonth: string;
-  expiryYear: string;
-  cardholderName: string;
-  tokenType: string;
-  purpose: string;
-  domain: string;
-}
-
 const TokenGenerate: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const [generatedToken, setGeneratedToken] = useState<string>('');
-  const [tokenDetails, setTokenDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   
-  const { control, handleSubmit, formState: { errors }, reset, getValues } = useForm<TokenGenerationForm>({
-    defaultValues: {
-      cardNumber: '',
-      expiryMonth: '',
-      expiryYear: '',
-      cardholderName: '',
-      tokenType: 'FPT',
-      purpose: 'ECOMMERCE',
-      domain: ''
-    }
+  // Store form data in state instead of react-hook-form
+  const [formData, setFormData] = useState({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cardholderName: '',
+    tokenType: 'FPT',
+    purpose: 'ECOMMERCE',
+    domain: ''
   });
+  
+  const [tokenResult, setTokenResult] = useState<any>(null);
 
   const steps = ['Card Details', 'Token Configuration', 'Review & Generate', 'Token Generated'];
 
-  const tokenTypes = [
-    { value: 'FPT', label: 'Format Preserving Token', description: 'Maintains card number format' },
-    { value: 'RANDOM', label: 'Random Token', description: 'Completely random secure token' },
-    { value: 'COF', label: 'Card-on-File', description: 'For recurring transactions' },
-    { value: 'DOMAIN', label: 'Domain Restricted', description: 'Limited to specific domains' },
-  ];
+  const handleFieldChange = (field: string, value: string) => {
+    console.log(`Field ${field} changed to:`, value);
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    console.log('Updated form data:', { ...formData, [field]: value });
+  };
 
-  const onSubmit = async (data: TokenGenerationForm) => {
-    console.log('Form data received:', data); // Debug log
+  const handleNext = () => {
+    console.log('Moving to next step. Current form data:', formData);
+    setActiveStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep(prev => prev - 1);
+  };
+
+  const handleSubmit = async () => {
+    console.log('Submitting form with data:', formData);
     
-    // Clean card number by removing all non-digits
-    const cleanCardNumber = data.cardNumber?.replace(/\D/g, '') || '';
+    const cleanCardNumber = formData.cardNumber.replace(/\D/g, '');
+    console.log('Cleaned card number:', cleanCardNumber);
     
-    console.log('Cleaned card number:', cleanCardNumber); // Debug log
-    
-    // Skip validation - just send to API
     if (!cleanCardNumber) {
       toast.error('Please enter a card number');
       return;
     }
-    
+
+    setLoading(true);
     try {
-      // Call actual tokenization API
       const response = await tokenizationService.tokenize({
-        cardNumber: cleanCardNumber, // Use cleaned number
-        merchantId: 'MERCH001' // Using default merchant ID
+        cardNumber: cleanCardNumber,
+        merchantId: 'MERCH001'
       });
       
+      console.log('API Response:', response);
+      
       if (response.success) {
-        setGeneratedToken(response.tokenValue);
-        setTokenDetails({
-          token: response.tokenValue,
-          maskedCard: response.maskedPan,
-          type: data.tokenType,
-          createdAt: new Date().toISOString(),
-          expiresAt: response.expiresAt,
-          status: response.status,
-        });
+        setTokenResult(response);
         setActiveStep(3);
         toast.success('Token generated successfully!');
       } else {
-        toast.error(response.message || 'Failed to generate token');
+        toast.error(response.message || 'Tokenization failed');
       }
     } catch (error) {
-      console.error('Tokenization error:', error);
-      toast.error('Failed to generate token. Please check your connection.');
+      console.error('API Error:', error);
+      toast.error('Failed to generate token');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleNext = () => {
-    // Debug: log current form values
-    console.log('Current form values:', getValues());
-    // Just move to next step without validation
-    setActiveStep((prevStep) => prevStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
-  };
-
-  const handleReset = () => {
-    setActiveStep(0);
-    setGeneratedToken('');
-    setTokenDetails(null);
-    reset();
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.info('Copied to clipboard!');
   };
 
   const renderStepContent = (step: number) => {
@@ -143,98 +96,41 @@ const TokenGenerate: React.FC = () => {
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Controller
-                name="cardNumber"
-                control={control}
-                rules={{
-                  required: 'Card number is required'
+              <TextField
+                fullWidth
+                label="Card Number"
+                value={formData.cardNumber}
+                onChange={(e) => handleFieldChange('cardNumber', e.target.value)}
+                placeholder="Enter card number"
+                InputProps={{
+                  startAdornment: <CreditCard sx={{ mr: 1, color: 'action.active' }} />
                 }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Card Number"
-                    fullWidth
-                    error={!!errors.cardNumber}
-                    helperText={errors.cardNumber?.message || 'Enter 13-19 digit card number'}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <CreditCard />
-                        </InputAdornment>
-                      ),
-                    }}
-                    placeholder="1234567812345678"
-                    onChange={(e) => {
-                      console.log('Card number input changed:', e.target.value);
-                      field.onChange(e.target.value);
-                      console.log('Field value after change:', field.value);
-                      console.log('All form values:', getValues());
-                    }}
-                  />
-                )}
               />
             </Grid>
-            
             <Grid item xs={6}>
-              <Controller
-                name="expiryMonth"
-                control={control}
-                rules={{}}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.expiryMonth}>
-                    <InputLabel>Expiry Month</InputLabel>
-                    <Select {...field} label="Expiry Month">
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                        <MenuItem key={month} value={month.toString().padStart(2, '0')}>
-                          {month.toString().padStart(2, '0')}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.expiryMonth && (
-                      <FormHelperText>{errors.expiryMonth.message}</FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+              <TextField
+                fullWidth
+                label="Expiry Month"
+                value={formData.expiryMonth}
+                onChange={(e) => handleFieldChange('expiryMonth', e.target.value)}
+                placeholder="MM"
               />
             </Grid>
-            
             <Grid item xs={6}>
-              <Controller
-                name="expiryYear"
-                control={control}
-                rules={{}}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.expiryYear}>
-                    <InputLabel>Expiry Year</InputLabel>
-                    <Select {...field} label="Expiry Year">
-                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map((year) => (
-                        <MenuItem key={year} value={year.toString()}>
-                          {year}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.expiryYear && (
-                      <FormHelperText>{errors.expiryYear.message}</FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+              <TextField
+                fullWidth
+                label="Expiry Year"
+                value={formData.expiryYear}
+                onChange={(e) => handleFieldChange('expiryYear', e.target.value)}
+                placeholder="YYYY"
               />
             </Grid>
-            
             <Grid item xs={12}>
-              <Controller
-                name="cardholderName"
-                control={control}
-                rules={{}}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Cardholder Name"
-                    fullWidth
-                    error={!!errors.cardholderName}
-                    helperText={errors.cardholderName?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Cardholder Name"
+                value={formData.cardholderName}
+                onChange={(e) => handleFieldChange('cardholderName', e.target.value)}
               />
             </Grid>
           </Grid>
@@ -244,175 +140,116 @@ const TokenGenerate: React.FC = () => {
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Controller
-                name="tokenType"
-                control={control}
-                rules={{}}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.tokenType}>
-                    <InputLabel>Token Type</InputLabel>
-                    <Select {...field} label="Token Type">
-                      {tokenTypes.map((type) => (
-                        <MenuItem key={type.value} value={type.value}>
-                          <Box>
-                            <Typography variant="body1">{type.label}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {type.description}
-                            </Typography>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.tokenType && (
-                      <FormHelperText>{errors.tokenType.message}</FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+              <TextField
+                fullWidth
+                label="Token Type"
+                value={formData.tokenType}
+                onChange={(e) => handleFieldChange('tokenType', e.target.value)}
               />
             </Grid>
-            
             <Grid item xs={12}>
-              <Controller
-                name="purpose"
-                control={control}
-                rules={{}}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.purpose}>
-                    <InputLabel>Purpose</InputLabel>
-                    <Select {...field} label="Purpose">
-                      <MenuItem value="ECOMMERCE">E-commerce Transaction</MenuItem>
-                      <MenuItem value="RECURRING">Recurring Payment</MenuItem>
-                      <MenuItem value="SUBSCRIPTION">Subscription</MenuItem>
-                      <MenuItem value="CARD_ON_FILE">Card on File</MenuItem>
-                      <MenuItem value="OTHER">Other</MenuItem>
-                    </Select>
-                    {errors.purpose && (
-                      <FormHelperText>{errors.purpose.message}</FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+              <TextField
+                fullWidth
+                label="Purpose"
+                value={formData.purpose}
+                onChange={(e) => handleFieldChange('purpose', e.target.value)}
               />
             </Grid>
-            
             <Grid item xs={12}>
-              <Controller
-                name="domain"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Domain Restriction (Optional)"
-                    fullWidth
-                    helperText="Leave empty for unrestricted access"
-                    placeholder="example.com"
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Domain (Optional)"
+                value={formData.domain}
+                onChange={(e) => handleFieldChange('domain', e.target.value)}
               />
             </Grid>
           </Grid>
         );
         
       case 2:
-        const formValues = getValues();
-        console.log('Review step - All form values:', formValues);
-        console.log('Review step - Card number specifically:', formValues.cardNumber);
         return (
           <Box>
             <Alert severity="info" sx={{ mb: 3 }}>
-              Please review the details before generating the token
+              Review your information before generating the token
             </Alert>
             
-            <Paper variant="outlined" sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Card Information
-              </Typography>
+            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h6" gutterBottom>Card Information</Typography>
               <Divider sx={{ my: 2 }} />
+              
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Card Number</Typography>
                   <Typography variant="body1">
-                    {formValues.cardNumber?.substring(0, 4) || '****'}****{formValues.cardNumber?.substring(formValues.cardNumber.length - 4) || '****'}
+                    {formData.cardNumber || 'Not provided'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Cardholder</Typography>
-                  <Typography variant="body1">{formValues.cardholderName || 'Not provided'}</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Token Type</Typography>
                   <Typography variant="body1">
-                    {tokenTypes.find(t => t.value === formValues.tokenType)?.label || 'Not selected'}
+                    {formData.cardholderName || 'Not provided'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Purpose</Typography>
-                  <Typography variant="body1">{formValues.purpose || 'Not selected'}</Typography>
+                  <Typography variant="body2" color="text.secondary">Expiry</Typography>
+                  <Typography variant="body1">
+                    {formData.expiryMonth}/{formData.expiryYear}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Token Type</Typography>
+                  <Typography variant="body1">{formData.tokenType}</Typography>
                 </Grid>
               </Grid>
-            </Paper>
+            </Box>
           </Box>
         );
         
       case 3:
         return (
           <Box textAlign="center">
-            <CheckCircle color="success" sx={{ fontSize: 80, mb: 2 }} />
             <Typography variant="h5" gutterBottom>
               Token Generated Successfully!
             </Typography>
-            
-            <Paper variant="outlined" sx={{ p: 3, mt: 3, backgroundColor: '#f5f5f5' }}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Your Secure Token
-              </Typography>
-              <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
-                <Typography variant="h6" fontFamily="monospace">
-                  {generatedToken}
-                </Typography>
-                <Tooltip title="Copy to clipboard">
-                  <IconButton size="small" onClick={() => copyToClipboard(generatedToken)}>
-                    <ContentCopy />
-                  </IconButton>
-                </Tooltip>
+            {tokenResult && (
+              <Box sx={{ mt: 3, p: 3, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">Token</Typography>
+                    <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
+                      {tokenResult.tokenValue}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">Masked Card</Typography>
+                    <Typography variant="body1">{tokenResult.maskedPan}</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">Status</Typography>
+                    <Typography variant="body1">{tokenResult.status}</Typography>
+                  </Grid>
+                </Grid>
               </Box>
-            </Paper>
-            
-            {tokenDetails && (
-              <Grid container spacing={2} sx={{ mt: 2 }}>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Masked Card</Typography>
-                  <Typography variant="body1">{tokenDetails.maskedCard}</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Token Type</Typography>
-                  <Typography variant="body1">{tokenDetails.type}</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Status</Typography>
-                  <Chip label={tokenDetails.status} color="success" size="small" />
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Expires</Typography>
-                  <Typography variant="body1">
-                    {new Date(tokenDetails.expiresAt).toLocaleDateString()}
-                  </Typography>
-                </Grid>
-              </Grid>
             )}
-            
-            <Box sx={{ mt: 3 }}>
-              <Button
-                variant="outlined"
-                startIcon={<Download />}
-                sx={{ mr: 2 }}
-                onClick={() => toast.info('Download functionality will be implemented')}
-              >
-                Download Details
-              </Button>
-              <Button variant="contained" onClick={handleReset}>
-                Generate Another Token
-              </Button>
-            </Box>
+            <Button
+              variant="contained"
+              sx={{ mt: 3 }}
+              onClick={() => {
+                setActiveStep(0);
+                setFormData({
+                  cardNumber: '',
+                  expiryMonth: '',
+                  expiryYear: '',
+                  cardholderName: '',
+                  tokenType: 'FPT',
+                  purpose: 'ECOMMERCE',
+                  domain: ''
+                });
+                setTokenResult(null);
+              }}
+            >
+              Generate Another Token
+            </Button>
           </Box>
         );
         
@@ -424,21 +261,20 @@ const TokenGenerate: React.FC = () => {
   return (
     <DashboardLayout>
       <Box>
-      <Typography variant="h4" gutterBottom>
-        Generate Token
-      </Typography>
-      
-      <Card>
-        <CardContent>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-          
-          <form onSubmit={handleSubmit(onSubmit)}>
+        <Typography variant="h4" gutterBottom>
+          Generate Token
+        </Typography>
+        
+        <Card>
+          <CardContent>
+            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+            
             {renderStepContent(activeStep)}
             
             {activeStep < 3 && (
@@ -446,7 +282,6 @@ const TokenGenerate: React.FC = () => {
                 <Button
                   disabled={activeStep === 0}
                   onClick={handleBack}
-                  sx={{ mr: 1 }}
                 >
                   Back
                 </Button>
@@ -455,30 +290,23 @@ const TokenGenerate: React.FC = () => {
                   {activeStep === 2 ? (
                     <Button
                       variant="contained"
-                      type="submit"
-                      startIcon={<Security />}
+                      startIcon={loading ? null : <Security />}
+                      onClick={handleSubmit}
+                      disabled={loading}
                     >
-                      Generate Token
+                      {loading ? 'Generating...' : 'Generate Token'}
                     </Button>
                   ) : (
-                    <Button
-                      variant="contained"
-                      onClick={handleNext}
-                    >
+                    <Button variant="contained" onClick={handleNext}>
                       Next
                     </Button>
                   )}
                 </Box>
               </Box>
             )}
-          </form>
-        </CardContent>
-      </Card>
-      
-      <Alert severity="info" icon={<Info />} sx={{ mt: 2 }}>
-        All card data is encrypted using AES-256 encryption and tokenized using PCI DSS compliant methods.
-        Tokens are stored in our secure vault with restricted access.
-      </Alert>
+          </CardContent>
+        </Card>
+        
       </Box>
     </DashboardLayout>
   );

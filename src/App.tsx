@@ -26,7 +26,6 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Merchant pages
 const TokenGenerate = lazy(() => import('./pages/merchant/TokenGenerate'));
-const TokenGenerateFixed = lazy(() => import('./pages/merchant/TokenGenerateFixed'));
 const ActiveTokens = lazy(() => import('./pages/merchant/ActiveTokens'));
 const TokenHistory = lazy(() => import('./pages/merchant/TokenHistory'));
 
@@ -177,7 +176,6 @@ const App: React.FC = () => {
                       <Route index element={<MerchantPortal />} />
                       <Route path="tokens" element={<TokenManagement />} />
                       <Route path="tokens/generate" element={<TokenGenerate />} />
-                      <Route path="tokens/generate-fixed" element={<TokenGenerateFixed />} />
                       <Route path="tokens/active" element={<ActiveTokens />} />
                       <Route path="tokens/history" element={<TokenHistory />} />
                       <Route path="audit" element={<AuditTrails />} />
