@@ -48,6 +48,7 @@ const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Settings = lazy(() => import('./pages/Settings'));
 const IntegrationTest = lazy(() => import('./pages/IntegrationTest'));
+const SimpleTokenize = lazy(() => import('./pages/SimpleTokenize'));
 
 // Create secure theme
 const theme = createTheme({
@@ -168,6 +169,7 @@ const App: React.FC = () => {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/integration-test" element={<IntegrationTest />} />
+                    <Route path="/simple-tokenize" element={<SimpleTokenize />} />
                     
                     {/* Merchant Portal Routes */}
                     <Route path="/merchant">
