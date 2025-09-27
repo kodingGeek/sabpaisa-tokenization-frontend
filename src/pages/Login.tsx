@@ -41,6 +41,9 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { setCredentials, setError, setLoading } from '../store/slices/authSlice';
 import { authApi } from '../services/api/auth';
 import SecurityBadge from '../components/common/SecurityBadge';
+import BackendHealthCheck from '../components/common/BackendHealthCheck';
+import tokenizationService from '../services/tokenizationService';
+import { toast } from 'react-toastify';
 
 interface LoginForm {
   email: string;
@@ -65,6 +68,7 @@ const Login: React.FC = () => {
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [activeStep, setActiveStep] = useState(0);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -83,9 +87,14 @@ const Login: React.FC = () => {
     },
   });
 
-  // Security: Auto-focus email field on mount
+  // Security: Auto-focus email field on mount and check backend
   useEffect(() => {
     setFocus('email');
+    
+    // Check backend connection
+    tokenizationService.checkHealth()
+      .then(isHealthy => setBackendConnected(isHealthy))
+      .catch(() => setBackendConnected(false));
   }, [setFocus]);
 
   // Security: Check for account lockout
@@ -365,6 +374,19 @@ const Login: React.FC = () => {
                 {5 - loginAttempts} attempt(s) remaining before account lockout
               </Alert>
             </Collapse>
+
+            {/* Backend Connection Status */}
+            {backendConnected !== null && (
+              <Collapse in={!backendConnected}>
+                <Alert 
+                  severity="warning" 
+                  sx={{ mb: 3 }}
+                  action={<BackendHealthCheck />}
+                >
+                  Backend API is not connected. Using mock authentication.
+                </Alert>
+              </Collapse>
+            )}
 
             <form onSubmit={handleSubmit(onSubmit)}>
               {!mfaRequired ? (

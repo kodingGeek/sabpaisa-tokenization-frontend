@@ -46,6 +46,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { selectCurrentUser, selectUserRole, logout } from '../store/slices/authSlice';
 import SecurityIndicator from '../components/common/SecurityIndicator';
+import BackendHealthCheck from '../components/common/BackendHealthCheck';
 
 const drawerWidth = 280;
 
@@ -282,6 +283,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                s.charAt(0).toUpperCase() + s.slice(1)
              ).join(' > ')}
           </Typography>
+
+          {/* Backend Health Check */}
+          <Box sx={{ mr: 2 }}>
+            <BackendHealthCheck />
+          </Box>
 
           {/* Notifications */}
           <IconButton

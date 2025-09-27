@@ -47,6 +47,7 @@ const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
 // Common pages
 const Profile = lazy(() => import('./pages/Profile'));
 const Settings = lazy(() => import('./pages/Settings'));
+const IntegrationTest = lazy(() => import('./pages/IntegrationTest'));
 
 // Create secure theme
 const theme = createTheme({
@@ -166,6 +167,7 @@ const App: React.FC = () => {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/integration-test" element={<IntegrationTest />} />
                     
                     {/* Merchant Portal Routes */}
                     <Route path="/merchant">
