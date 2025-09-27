@@ -115,6 +115,8 @@ const TokenGenerate: React.FC = () => {
   };
 
   const handleNext = () => {
+    // Debug: log current form values
+    console.log('Current form values:', getValues());
     // Just move to next step without validation
     setActiveStep((prevStep) => prevStep + 1);
   };
@@ -144,7 +146,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="cardNumber"
                 control={control}
-                defaultValue=""
                 rules={{
                   required: 'Card number is required'
                 }}
@@ -176,7 +177,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="expiryMonth"
                 control={control}
-                defaultValue=""
                 rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.expiryMonth}>
@@ -200,7 +200,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="expiryYear"
                 control={control}
-                defaultValue=""
                 rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.expiryYear}>
@@ -224,7 +223,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="cardholderName"
                 control={control}
-                defaultValue=""
                 rules={{}}
                 render={({ field }) => (
                   <TextField
@@ -247,7 +245,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="tokenType"
                 control={control}
-                defaultValue=""
                 rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.tokenType}>
@@ -276,7 +273,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="purpose"
                 control={control}
-                defaultValue=""
                 rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.purpose}>
@@ -300,7 +296,6 @@ const TokenGenerate: React.FC = () => {
               <Controller
                 name="domain"
                 control={control}
-                defaultValue=""
                 render={({ field }) => (
                   <TextField
                     {...field}
