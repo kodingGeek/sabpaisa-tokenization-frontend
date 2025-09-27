@@ -63,8 +63,11 @@ const TokenGenerate: React.FC = () => {
   ];
 
   const onSubmit = async (data: TokenGenerationForm) => {
-    // Validate data exists
-    if (!data.cardNumber || data.cardNumber.length < 13 || data.cardNumber.length > 19) {
+    // Clean card number by removing all non-digits
+    const cleanCardNumber = data.cardNumber?.replace(/\D/g, '') || '';
+    
+    // Validate cleaned card number
+    if (!cleanCardNumber || cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
       toast.error('Invalid card number - must be 13-19 digits');
       return;
     }
@@ -72,7 +75,7 @@ const TokenGenerate: React.FC = () => {
     try {
       // Call actual tokenization API
       const response = await tokenizationService.tokenize({
-        cardNumber: data.cardNumber.replace(/\s/g, ''), // Remove any spaces
+        cardNumber: cleanCardNumber, // Use cleaned number
         merchantId: 'MERCH001' // Using default merchant ID
       });
       
@@ -129,14 +132,14 @@ const TokenGenerate: React.FC = () => {
                 defaultValue=""
                 rules={{
                   required: 'Card number is required',
-                  pattern: {
-                    value: /^[0-9]{13,19}$/,
-                    message: 'Card number must be 13-19 digits',
-                  },
                   validate: {
-                    validLength: (value) => {
-                      const len = value.length;
-                      return (len >= 13 && len <= 19) || 'Card number must be between 13-19 digits';
+                    validCard: (value) => {
+                      // Remove spaces and non-digits
+                      const cleanValue = value.replace(/\D/g, '');
+                      if (cleanValue.length < 13 || cleanValue.length > 19) {
+                        return 'Card number must be 13-19 digits';
+                      }
+                      return true;
                     }
                   }
                 }}
