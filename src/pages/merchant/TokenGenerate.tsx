@@ -51,15 +51,14 @@ const TokenGenerate: React.FC = () => {
   const [generatedToken, setGeneratedToken] = useState<string>('');
   const [tokenDetails, setTokenDetails] = useState<any>(null);
   
-  const { control, handleSubmit, formState: { errors }, reset, getValues, trigger } = useForm<TokenGenerationForm>({
-    mode: 'onChange',
+  const { control, handleSubmit, formState: { errors }, reset, getValues } = useForm<TokenGenerationForm>({
     defaultValues: {
       cardNumber: '',
       expiryMonth: '',
       expiryYear: '',
       cardholderName: '',
-      tokenType: '',
-      purpose: '',
+      tokenType: 'FPT',
+      purpose: 'ECOMMERCE',
       domain: ''
     }
   });
@@ -81,9 +80,9 @@ const TokenGenerate: React.FC = () => {
     
     console.log('Cleaned card number:', cleanCardNumber); // Debug log
     
-    // Validate cleaned card number
-    if (!cleanCardNumber || cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
-      toast.error('Invalid card number - must be 13-19 digits');
+    // Skip validation - just send to API
+    if (!cleanCardNumber) {
+      toast.error('Please enter a card number');
       return;
     }
     
@@ -115,22 +114,9 @@ const TokenGenerate: React.FC = () => {
     }
   };
 
-  const handleNext = async () => {
-    let fieldsToValidate: (keyof TokenGenerationForm)[] = [];
-    
-    // Determine which fields to validate based on current step
-    if (activeStep === 0) {
-      fieldsToValidate = ['cardNumber', 'expiryMonth', 'expiryYear', 'cardholderName'];
-    } else if (activeStep === 1) {
-      fieldsToValidate = ['tokenType', 'purpose'];
-    }
-    
-    // Validate current step fields
-    const isValid = await trigger(fieldsToValidate);
-    
-    if (isValid) {
-      setActiveStep((prevStep) => prevStep + 1);
-    }
+  const handleNext = () => {
+    // Just move to next step without validation
+    setActiveStep((prevStep) => prevStep + 1);
   };
 
   const handleBack = () => {
@@ -160,11 +146,7 @@ const TokenGenerate: React.FC = () => {
                 control={control}
                 defaultValue=""
                 rules={{
-                  required: 'Card number is required',
-                  minLength: {
-                    value: 13,
-                    message: 'Card number too short'
-                  }
+                  required: 'Card number is required'
                 }}
                 render={({ field }) => (
                   <TextField
@@ -195,7 +177,7 @@ const TokenGenerate: React.FC = () => {
                 name="expiryMonth"
                 control={control}
                 defaultValue=""
-                rules={{ required: 'Expiry month is required' }}
+                rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.expiryMonth}>
                     <InputLabel>Expiry Month</InputLabel>
@@ -219,7 +201,7 @@ const TokenGenerate: React.FC = () => {
                 name="expiryYear"
                 control={control}
                 defaultValue=""
-                rules={{ required: 'Expiry year is required' }}
+                rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.expiryYear}>
                     <InputLabel>Expiry Year</InputLabel>
@@ -243,7 +225,7 @@ const TokenGenerate: React.FC = () => {
                 name="cardholderName"
                 control={control}
                 defaultValue=""
-                rules={{ required: 'Cardholder name is required' }}
+                rules={{}}
                 render={({ field }) => (
                   <TextField
                     {...field}
@@ -266,7 +248,7 @@ const TokenGenerate: React.FC = () => {
                 name="tokenType"
                 control={control}
                 defaultValue=""
-                rules={{ required: 'Token type is required' }}
+                rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.tokenType}>
                     <InputLabel>Token Type</InputLabel>
@@ -295,7 +277,7 @@ const TokenGenerate: React.FC = () => {
                 name="purpose"
                 control={control}
                 defaultValue=""
-                rules={{ required: 'Purpose is required' }}
+                rules={{}}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.purpose}>
                     <InputLabel>Purpose</InputLabel>
