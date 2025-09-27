@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabPaisa Tokenization Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #1976d2;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #e8f5e9;
+            border: 1px solid #4caf50;
+        }
+        .error {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.online {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status.offline {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SabPaisa Tokenization System</h1>
+        
+        <div class="status" id="apiStatus">Checking API status...</div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('tokenize')">Tokenize Card</div>
+            <div class="tab" onclick="switchTab('detokenize')">Verify Token</div>
+        </div>
+        
+        <!-- Tokenize Tab -->
+        <div id="tokenizeTab" class="tab-content active">
+            <h2>Tokenize Card</h2>
+            <form id="tokenizeForm">
+                <div class="form-group">
+                    <label for="cardNumber">Card Number:</label>
+                    <input type="text" id="cardNumber" placeholder="4111 1111 1111 1111" maxlength="19" required>
+                </div>
+                <div class="form-group">
+                    <label for="merchantId">Merchant ID:</label>
+                    <input type="text" id="merchantId" value="MERCH001" required>
+                </div>
+                <button type="submit">Tokenize Card</button>
+            </form>
+            <div id="tokenizeResult" class="result"></div>
+        </div>
+        
+        <!-- Detokenize Tab -->
+        <div id="detokenizeTab" class="tab-content">
+            <h2>Verify Token</h2>
+            <form id="detokenizeForm">
+                <div class="form-group">
+                    <label for="token">Token:</label>
+                    <input type="text" id="token" placeholder="Enter 16-digit token" maxlength="16" required>
+                </div>
+                <div class="form-group">
+                    <label for="detokMerchantId">Merchant ID:</label>
+                    <input type="text" id="detokMerchantId" value="MERCH001" required>
+                </div>
+                <button type="submit">Verify Token</button>
+            </form>
+            <div id="detokenizeResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8082/api/v1';
+        
+        // Check API status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/tokens/health`);
+                const statusDiv = document.getElementById('apiStatus');
+                if (response.ok) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = '✓ API is online (localhost:8082)';
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '✗ API is offline';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('apiStatus');
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '✗ Cannot connect to API at localhost:8082';
+            }
+        }
+        
+        // Format card number
+        document.getElementById('cardNumber').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+        });
+        
+        // Switch tabs
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            
+            if (tab === 'tokenize') {
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('tokenizeTab').classList.add('active');
+            } else {
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('detokenizeTab').classList.add('active');
+            }
+        }
+        
+        // Tokenize form
+        document.getElementById('tokenizeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const merchantId = document.getElementById('merchantId').value;
+            const resultDiv = document.getElementById('tokenizeResult');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/tokens/tokenize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cardNumber, merchantId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>✓ Tokenization Successful!</h3>
+                        <p><strong>Token:</strong> ${data.tokenValue}</p>
+                        <p><strong>Masked Card:</strong> ${data.maskedPan}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Expires:</strong> ${new Date(data.expiresAt).toLocaleString()}</p>
+                    `;
+                    document.getElementById('tokenizeForm').reset();
+                    document.getElementById('merchantId').value = 'MERCH001';
+                } else {
+                    throw new Error(data.message || 'Tokenization failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>✗ Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+        
+        // Detokenize form
+        document.getElementById('detokenizeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value;
+            const merchantId = document.getElementById('detokMerchantId').value;
+            const resultDiv = document.getElementById('detokenizeResult');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/tokens/detokenize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token, merchantId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>✓ Token Verified!</h3>
+                        <p><strong>Masked Card:</strong> ${data.maskedPan}</p>
+                        <p><strong>Token:</strong> ${data.tokenValue}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Expires:</strong> ${new Date(data.expiresAt).toLocaleString()}</p>
+                    `;
+                    document.getElementById('detokenizeForm').reset();
+                    document.getElementById('detokMerchantId').value = 'MERCH001';
+                } else {
+                    throw new Error(data.message || 'Token verification failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>✗ Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+        
+        // Check API status on load
+        checkApiStatus();
+        setInterval(checkApiStatus, 10000); // Check every 10 seconds
+    </script>
+</body>
+</html>

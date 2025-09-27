@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1976d2" />
+    <meta
+      name="description"
+      content="SabPaisa Secure Tokenization Platform - Enterprise-grade tokenization with PCI DSS compliance"
+    />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline'; 
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+                   font-src 'self' https://fonts.gstatic.com; 
+                   img-src 'self' data: https:; 
+                   connect-src 'self' https://api.sabpaisa.in wss://api.sabpaisa.in; 
+                   frame-ancestors 'none'; 
+                   base-uri 'self'; 
+                   form-action 'self';">
+    
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Preconnect to API domain -->
+    <link rel="preconnect" href="https://api.sabpaisa.in">
+    <link rel="dns-prefetch" href="https://api.sabpaisa.in">
+    
+    <!-- Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <!-- Roboto Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" />
+    
+    <title>SabPaisa Tokenization Platform</title>
+    
+    <!-- Fix axios toString error BEFORE React loads -->
+    <script>
+      // Patch URLSearchParams immediately
+      (function() {
+        if (typeof window !== 'undefined' && window.URLSearchParams) {
+          const OriginalURLSearchParams = window.URLSearchParams;
+          window.URLSearchParams = class PatchedURLSearchParams extends OriginalURLSearchParams {
+            constructor(...args) {
+              super(...args);
+              const originalToString = super.toString.bind(this);
+              Object.defineProperty(this, 'toString', {
+                value: originalToString,
+                writable: true,
+                enumerable: false,
+                configurable: true
+              });
+            }
+          };
+          // Copy prototype
+          Object.setPrototypeOf(window.URLSearchParams.prototype, OriginalURLSearchParams.prototype);
+        }
+      })();
+    </script>
+    
+    <!-- No JavaScript fallback -->
+    <noscript>
+      <style>
+        .no-js-warning {
+          display: block;
+          padding: 20px;
+          text-align: center;
+          background-color: #f44336;
+          color: white;
+          font-family: Arial, sans-serif;
+        }
+      </style>
+      <div class="no-js-warning">
+        JavaScript is required for the SabPaisa Tokenization Platform to ensure security and functionality.
+        Please enable JavaScript in your browser settings.
+      </div>
+    </noscript>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('%PUBLIC_URL%/service-worker.js')
+            .then(registration => console.log('ServiceWorker registration successful'))
+            .catch(err => console.error('ServiceWorker registration failed:', err));
+        });
+      }
+    </script>
+  </body>
+</html>

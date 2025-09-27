@@ -1,0 +1,227 @@
+/* Import custom animations */
+@import './styles/animations.css';
+
+/* Import Google Fonts for better typography */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+/* Security-focused global styles with enhanced UI/UX */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Enhanced body styling */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8f9fa;
+  color: #212529;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Beautiful gradient background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0.03;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Disable text selection on sensitive elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Disable print for security */
+@media print {
+  body {
+    display: none !important;
+  }
+}
+
+/* Hide sensitive data from screen readers when needed */
+.aria-hidden-sensitive {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Secure input styling */
+input[type="password"],
+input[type="text"][data-sensitive="true"] {
+  -webkit-text-security: disc;
+  font-family: text-security-disc;
+}
+
+/* Prevent autocomplete on sensitive fields */
+input[data-no-autocomplete="true"] {
+  autocomplete: off;
+  autocorrect: off;
+  autocapitalize: off;
+  spellcheck: false;
+}
+
+/* Loading overlay for secure operations */
+.secure-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Session timeout warning */
+.session-warning {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #ff9800;
+  color: white;
+  padding: 16px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 9998;
+}
+
+/* Secure badge styling */
+.security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Audit trail styling */
+.audit-entry {
+  padding: 12px;
+  border-left: 3px solid #1976d2;
+  margin-bottom: 8px;
+  background: #f5f5f5;
+  position: relative;
+}
+
+.audit-entry.critical {
+  border-left-color: #d32f2f;
+  background: #ffebee;
+}
+
+/* Token display */
+.token-display {
+  font-family: 'Roboto Mono', monospace;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  word-break: break-all;
+  user-select: text;
+}
+
+/* Masked data display */
+.masked-data {
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: 2px;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-indicator.active {
+  background: #4caf50;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.inactive {
+  background: #f44336;
+}
+
+.status-indicator.warning {
+  background: #ff9800;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+/* Scrollbar styling for better UX */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .security-badge {
+    border: 2px solid currentColor;
+  }
+  
+  .status-indicator {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
