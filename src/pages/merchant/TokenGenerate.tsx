@@ -51,7 +51,18 @@ const TokenGenerate: React.FC = () => {
   const [generatedToken, setGeneratedToken] = useState<string>('');
   const [tokenDetails, setTokenDetails] = useState<any>(null);
   
-  const { control, handleSubmit, formState: { errors }, reset, getValues } = useForm<TokenGenerationForm>();
+  const { control, handleSubmit, formState: { errors }, reset, getValues, trigger } = useForm<TokenGenerationForm>({
+    mode: 'onChange',
+    defaultValues: {
+      cardNumber: '',
+      expiryMonth: '',
+      expiryYear: '',
+      cardholderName: '',
+      tokenType: '',
+      purpose: '',
+      domain: ''
+    }
+  });
 
   const steps = ['Card Details', 'Token Configuration', 'Review & Generate', 'Token Generated'];
 
@@ -63,8 +74,12 @@ const TokenGenerate: React.FC = () => {
   ];
 
   const onSubmit = async (data: TokenGenerationForm) => {
+    console.log('Form data received:', data); // Debug log
+    
     // Clean card number by removing all non-digits
     const cleanCardNumber = data.cardNumber?.replace(/\D/g, '') || '';
+    
+    console.log('Cleaned card number:', cleanCardNumber); // Debug log
     
     // Validate cleaned card number
     if (!cleanCardNumber || cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
@@ -100,8 +115,22 @@ const TokenGenerate: React.FC = () => {
     }
   };
 
-  const handleNext = () => {
-    setActiveStep((prevStep) => prevStep + 1);
+  const handleNext = async () => {
+    let fieldsToValidate: (keyof TokenGenerationForm)[] = [];
+    
+    // Determine which fields to validate based on current step
+    if (activeStep === 0) {
+      fieldsToValidate = ['cardNumber', 'expiryMonth', 'expiryYear', 'cardholderName'];
+    } else if (activeStep === 1) {
+      fieldsToValidate = ['tokenType', 'purpose'];
+    }
+    
+    // Validate current step fields
+    const isValid = await trigger(fieldsToValidate);
+    
+    if (isValid) {
+      setActiveStep((prevStep) => prevStep + 1);
+    }
   };
 
   const handleBack = () => {
@@ -132,15 +161,9 @@ const TokenGenerate: React.FC = () => {
                 defaultValue=""
                 rules={{
                   required: 'Card number is required',
-                  validate: {
-                    validCard: (value) => {
-                      // Remove spaces and non-digits
-                      const cleanValue = value.replace(/\D/g, '');
-                      if (cleanValue.length < 13 || cleanValue.length > 19) {
-                        return 'Card number must be 13-19 digits';
-                      }
-                      return true;
-                    }
+                  minLength: {
+                    value: 13,
+                    message: 'Card number too short'
                   }
                 }}
                 render={({ field }) => (
@@ -149,7 +172,7 @@ const TokenGenerate: React.FC = () => {
                     label="Card Number"
                     fullWidth
                     error={!!errors.cardNumber}
-                    helperText={errors.cardNumber?.message}
+                    helperText={errors.cardNumber?.message || 'Enter 13-19 digit card number'}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -158,6 +181,10 @@ const TokenGenerate: React.FC = () => {
                       ),
                     }}
                     placeholder="1234567812345678"
+                    onChange={(e) => {
+                      // Allow user to type naturally, we'll clean it when submitting
+                      field.onChange(e.target.value);
+                    }}
                   />
                 )}
               />
