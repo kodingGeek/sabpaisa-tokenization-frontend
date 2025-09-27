@@ -165,8 +165,10 @@ const TokenGenerate: React.FC = () => {
                     }}
                     placeholder="1234567812345678"
                     onChange={(e) => {
-                      // Allow user to type naturally, we'll clean it when submitting
+                      console.log('Card number input changed:', e.target.value);
                       field.onChange(e.target.value);
+                      console.log('Field value after change:', field.value);
+                      console.log('All form values:', getValues());
                     }}
                   />
                 )}
@@ -312,6 +314,8 @@ const TokenGenerate: React.FC = () => {
         
       case 2:
         const formValues = getValues();
+        console.log('Review step - All form values:', formValues);
+        console.log('Review step - Card number specifically:', formValues.cardNumber);
         return (
           <Box>
             <Alert severity="info" sx={{ mb: 3 }}>
