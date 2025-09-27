@@ -50,7 +50,7 @@ const TokenGenerate: React.FC = () => {
   const [generatedToken, setGeneratedToken] = useState<string>('');
   const [tokenDetails, setTokenDetails] = useState<any>(null);
   
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<TokenGenerationForm>();
+  const { control, handleSubmit, formState: { errors }, reset, getValues } = useForm<TokenGenerationForm>();
 
   const steps = ['Card Details', 'Token Configuration', 'Review & Generate', 'Token Generated'];
 
@@ -62,12 +62,18 @@ const TokenGenerate: React.FC = () => {
   ];
 
   const onSubmit = (data: TokenGenerationForm) => {
+    // Validate data exists
+    if (!data.cardNumber || data.cardNumber.length < 16) {
+      toast.error('Invalid card number');
+      return;
+    }
+    
     // Simulate token generation
     const mockToken = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
     setGeneratedToken(mockToken);
     setTokenDetails({
       token: mockToken,
-      maskedCard: `${data.cardNumber.substring(0, 4)}****${data.cardNumber.substring(12)}`,
+      maskedCard: `${data.cardNumber.substring(0, 4)}****${data.cardNumber.substring(data.cardNumber.length - 4)}`,
       type: data.tokenType,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
@@ -278,6 +284,7 @@ const TokenGenerate: React.FC = () => {
         );
         
       case 2:
+        const formValues = getValues();
         return (
           <Box>
             <Alert severity="info" sx={{ mb: 3 }}>
@@ -293,22 +300,22 @@ const TokenGenerate: React.FC = () => {
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Card Number</Typography>
                   <Typography variant="body1">
-                    {control._formValues.cardNumber?.substring(0, 4)}****{control._formValues.cardNumber?.substring(12)}
+                    {formValues.cardNumber?.substring(0, 4) || '****'}****{formValues.cardNumber?.substring(formValues.cardNumber.length - 4) || '****'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Cardholder</Typography>
-                  <Typography variant="body1">{control._formValues.cardholderName}</Typography>
+                  <Typography variant="body1">{formValues.cardholderName || 'Not provided'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Token Type</Typography>
                   <Typography variant="body1">
-                    {tokenTypes.find(t => t.value === control._formValues.tokenType)?.label}
+                    {tokenTypes.find(t => t.value === formValues.tokenType)?.label || 'Not selected'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Purpose</Typography>
-                  <Typography variant="body1">{control._formValues.purpose}</Typography>
+                  <Typography variant="body1">{formValues.purpose || 'Not selected'}</Typography>
                 </Grid>
               </Grid>
             </Paper>
