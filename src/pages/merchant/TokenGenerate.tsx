@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
+import tokenizationService from '../../services/tokenizationService';
 
 interface TokenGenerationForm {
   cardNumber: string;
@@ -61,26 +62,39 @@ const TokenGenerate: React.FC = () => {
     { value: 'DOMAIN', label: 'Domain Restricted', description: 'Limited to specific domains' },
   ];
 
-  const onSubmit = (data: TokenGenerationForm) => {
+  const onSubmit = async (data: TokenGenerationForm) => {
     // Validate data exists
-    if (!data.cardNumber || data.cardNumber.length < 16) {
-      toast.error('Invalid card number');
+    if (!data.cardNumber || data.cardNumber.length < 13 || data.cardNumber.length > 19) {
+      toast.error('Invalid card number - must be 13-19 digits');
       return;
     }
     
-    // Simulate token generation
-    const mockToken = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-    setGeneratedToken(mockToken);
-    setTokenDetails({
-      token: mockToken,
-      maskedCard: `${data.cardNumber.substring(0, 4)}****${data.cardNumber.substring(data.cardNumber.length - 4)}`,
-      type: data.tokenType,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'ACTIVE',
-    });
-    setActiveStep(3);
-    toast.success('Token generated successfully!');
+    try {
+      // Call actual tokenization API
+      const response = await tokenizationService.tokenize({
+        cardNumber: data.cardNumber.replace(/\s/g, ''), // Remove any spaces
+        merchantId: 'MERCH001' // Using default merchant ID
+      });
+      
+      if (response.success) {
+        setGeneratedToken(response.tokenValue);
+        setTokenDetails({
+          token: response.tokenValue,
+          maskedCard: response.maskedPan,
+          type: data.tokenType,
+          createdAt: new Date().toISOString(),
+          expiresAt: response.expiresAt,
+          status: response.status,
+        });
+        setActiveStep(3);
+        toast.success('Token generated successfully!');
+      } else {
+        toast.error(response.message || 'Failed to generate token');
+      }
+    } catch (error) {
+      console.error('Tokenization error:', error);
+      toast.error('Failed to generate token. Please check your connection.');
+    }
   };
 
   const handleNext = () => {
@@ -116,9 +130,15 @@ const TokenGenerate: React.FC = () => {
                 rules={{
                   required: 'Card number is required',
                   pattern: {
-                    value: /^[0-9]{16}$/,
-                    message: 'Card number must be 16 digits',
+                    value: /^[0-9]{13,19}$/,
+                    message: 'Card number must be 13-19 digits',
                   },
+                  validate: {
+                    validLength: (value) => {
+                      const len = value.length;
+                      return (len >= 13 && len <= 19) || 'Card number must be between 13-19 digits';
+                    }
+                  }
                 }}
                 render={({ field }) => (
                   <TextField
