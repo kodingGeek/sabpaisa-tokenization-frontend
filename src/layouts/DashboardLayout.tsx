@@ -41,6 +41,8 @@ import {
   Timeline,
   Storage,
   Lock,
+  Business,
+  Store,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
@@ -127,6 +129,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       ],
     },
     {
+      title: 'Merchant Management',
+      path: '/merchant/management',
+      icon: <Store />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
+    },
+    {
       title: 'Security Center',
       path: '/security',
       icon: <Security />,
@@ -155,6 +163,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       role: ['SYSTEM_ADMIN'],
       children: [
         { title: 'User Management', path: '/admin/users', icon: <People /> },
+        { title: 'Merchant Management', path: '/admin/merchants', icon: <Business /> },
         { title: 'System Config', path: '/admin/config', icon: <Settings /> },
         { title: 'Infrastructure', path: '/admin/infrastructure', icon: <Storage /> },
       ],

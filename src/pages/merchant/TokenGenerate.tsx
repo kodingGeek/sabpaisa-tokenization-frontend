@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import {
   Box,
@@ -13,14 +13,22 @@ import {
   Stepper,
   Step,
   StepLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
 } from '@mui/material';
 import { CreditCard, Security } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import tokenizationService from '../../services/tokenizationService';
+import merchantService, { MerchantSummary } from '../../services/merchantService';
 
 const TokenGenerate: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [merchants, setMerchants] = useState<MerchantSummary[]>([]);
+  const [loadingMerchants, setLoadingMerchants] = useState(false);
   
   // Store form data in state instead of react-hook-form
   const [formData, setFormData] = useState({
@@ -30,10 +38,37 @@ const TokenGenerate: React.FC = () => {
     cardholderName: '',
     tokenType: 'FPT',
     purpose: 'ECOMMERCE',
-    domain: ''
+    domain: '',
+    merchantId: ''
   });
   
   const [tokenResult, setTokenResult] = useState<any>(null);
+  
+  // Fetch active merchants
+  useEffect(() => {
+    fetchMerchants();
+  }, []);
+
+  const fetchMerchants = async () => {
+    setLoadingMerchants(true);
+    try {
+      const response = await merchantService.getAllMerchants({
+        status: 'ACTIVE',
+        page: 0,
+        size: 100
+      });
+      setMerchants(response.merchants);
+      
+      // Auto-select first merchant if only one exists
+      if (response.merchants.length === 1) {
+        setFormData(prev => ({ ...prev, merchantId: response.merchants[0].merchantId }));
+      }
+    } catch (error) {
+      toast.error('Failed to load merchants');
+    } finally {
+      setLoadingMerchants(false);
+    }
+  };
 
   const steps = ['Card Details', 'Token Configuration', 'Review & Generate', 'Token Generated'];
 
@@ -65,12 +100,17 @@ const TokenGenerate: React.FC = () => {
       toast.error('Please enter a card number');
       return;
     }
+    
+    if (!formData.merchantId) {
+      toast.error('Please select a merchant');
+      return;
+    }
 
     setLoading(true);
     try {
       const response = await tokenizationService.tokenize({
         cardNumber: cleanCardNumber,
-        merchantId: 'MERCH001'
+        merchantId: formData.merchantId
       });
       
       console.log('API Response:', response);
@@ -95,6 +135,26 @@ const TokenGenerate: React.FC = () => {
       case 0:
         return (
           <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <FormControl fullWidth disabled={loadingMerchants}>
+                <InputLabel>Select Merchant</InputLabel>
+                <Select
+                  value={formData.merchantId}
+                  onChange={(e) => handleFieldChange('merchantId', e.target.value)}
+                  label="Select Merchant"
+                >
+                  {loadingMerchants && <MenuItem value=""><CircularProgress size={20} /></MenuItem>}
+                  {!loadingMerchants && merchants.length === 0 && (
+                    <MenuItem value="" disabled>No active merchants available</MenuItem>
+                  )}
+                  {merchants.map((merchant) => (
+                    <MenuItem key={merchant.merchantId} value={merchant.merchantId}>
+                      {merchant.businessName} ({merchant.merchantId})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -178,6 +238,12 @@ const TokenGenerate: React.FC = () => {
               <Divider sx={{ my: 2 }} />
               
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">Merchant</Typography>
+                  <Typography variant="body1">
+                    {merchants.find(m => m.merchantId === formData.merchantId)?.businessName || formData.merchantId || 'Not selected'}
+                  </Typography>
+                </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Card Number</Typography>
                   <Typography variant="body1">
@@ -243,7 +309,8 @@ const TokenGenerate: React.FC = () => {
                   cardholderName: '',
                   tokenType: 'FPT',
                   purpose: 'ECOMMERCE',
-                  domain: ''
+                  domain: '',
+                  merchantId: merchants.length === 1 ? merchants[0].merchantId : ''
                 });
                 setTokenResult(null);
               }}

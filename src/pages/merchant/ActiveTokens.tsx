@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import {
   Box,
@@ -21,12 +21,14 @@ import {
   FormControl,
   InputLabel,
   Select,
+  CircularProgress,
 } from '@mui/material';
 import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
   GridToolbar,
+  GridPaginationModel,
 } from '@mui/x-data-grid';
 import {
   Search,
@@ -40,73 +42,59 @@ import {
   Download,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import tokenizationService, { TokenInfo } from '../../services/tokenizationService';
 
-interface Token {
+interface TokenRow extends TokenInfo {
   id: string;
-  token: string;
-  maskedCard: string;
-  type: string;
-  purpose: string;
-  status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
-  createdAt: string;
-  expiresAt: string;
-  lastUsed: string;
-  usageCount: number;
-  merchant: string;
 }
 
 const ActiveTokens: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TokenRow | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openDialog, setOpenDialog] = useState<string>('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tokens, setTokens] = useState<TokenRow[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 10,
+  });
 
-  // Mock data
-  const mockTokens: Token[] = [
-    {
-      id: '1',
-      token: 'tok_1234567890abcdef',
-      maskedCard: '4111****1111',
-      type: 'FPT',
-      purpose: 'ECOMMERCE',
-      status: 'ACTIVE',
-      createdAt: '2024-01-15T10:00:00Z',
-      expiresAt: '2025-01-15T10:00:00Z',
-      lastUsed: '2024-01-20T15:30:00Z',
-      usageCount: 45,
-      merchant: 'MERCH001',
-    },
-    {
-      id: '2',
-      token: 'tok_2345678901bcdefg',
-      maskedCard: '5200****5678',
-      type: 'COF',
-      purpose: 'RECURRING',
-      status: 'ACTIVE',
-      createdAt: '2024-01-10T09:00:00Z',
-      expiresAt: '2025-01-10T09:00:00Z',
-      lastUsed: '2024-01-22T10:15:00Z',
-      usageCount: 120,
-      merchant: 'MERCH001',
-    },
-    {
-      id: '3',
-      token: 'tok_3456789012cdefgh',
-      maskedCard: '4532****9876',
-      type: 'RANDOM',
-      purpose: 'SUBSCRIPTION',
-      status: 'SUSPENDED',
-      createdAt: '2024-01-05T14:30:00Z',
-      expiresAt: '2025-01-05T14:30:00Z',
-      lastUsed: '2024-01-18T12:00:00Z',
-      usageCount: 78,
-      merchant: 'MERCH001',
-    },
-  ];
+  // Fetch tokens from API
+  const fetchTokens = async () => {
+    setLoading(true);
+    try {
+      const response = await tokenizationService.getAllTokens({
+        page: paginationModel.page,
+        size: paginationModel.pageSize,
+        sortBy: 'createdAt',
+        sortDirection: 'DESC',
+        merchantId: 'MERCH001' // TODO: Get from user context
+      });
+      
+      const tokenRows: TokenRow[] = response.tokens.map((token, index) => ({
+        ...token,
+        id: `${token.tokenValue}_${index}`
+      }));
+      
+      setTokens(tokenRows);
+      setTotalElements(response.totalElements);
+    } catch (error) {
+      console.error('Error fetching tokens:', error);
+      toast.error('Failed to fetch tokens');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, token: Token) => {
+  useEffect(() => {
+    fetchTokens();
+  }, [paginationModel]);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, token: TokenRow) => {
     setAnchorEl(event.currentTarget);
     setSelectedToken(token);
   };
@@ -126,12 +114,12 @@ const ActiveTokens: React.FC = () => {
   };
 
   const handleSuspendToken = () => {
-    toast.success(`Token ${selectedToken?.token} suspended successfully`);
+    toast.success(`Token ${selectedToken?.tokenValue} suspended successfully`);
     handleCloseDialog();
   };
 
   const handleDeleteToken = () => {
-    toast.success(`Token ${selectedToken?.token} deleted successfully`);
+    toast.success(`Token ${selectedToken?.tokenValue} deleted successfully`);
     handleCloseDialog();
   };
 
@@ -145,9 +133,14 @@ const ActiveTokens: React.FC = () => {
     setSelectedRows([]);
   };
 
+  const handleRefresh = () => {
+    toast.info('Refreshing token list...');
+    fetchTokens();
+  };
+
   const columns: GridColDef[] = [
     {
-      field: 'token',
+      field: 'tokenValue',
       headerName: 'Token',
       width: 200,
       renderCell: (params: GridRenderCellParams) => (
@@ -170,22 +163,19 @@ const ActiveTokens: React.FC = () => {
       ),
     },
     {
-      field: 'maskedCard',
+      field: 'maskedPan',
       headerName: 'Masked Card',
       width: 130,
     },
     {
-      field: 'type',
-      headerName: 'Type',
-      width: 100,
-      renderCell: (params: GridRenderCellParams) => (
-        <Chip label={params.value} size="small" variant="outlined" />
-      ),
+      field: 'merchantId',
+      headerName: 'Merchant ID',
+      width: 120,
     },
     {
-      field: 'purpose',
-      headerName: 'Purpose',
-      width: 120,
+      field: 'merchantName',
+      headerName: 'Merchant',
+      width: 150,
     },
     {
       field: 'status',
@@ -209,10 +199,10 @@ const ActiveTokens: React.FC = () => {
       align: 'center',
     },
     {
-      field: 'lastUsed',
-      headerName: 'Last Used',
+      field: 'createdAt',
+      headerName: 'Created',
       width: 150,
-      valueFormatter: (params) => new Date(params.value).toLocaleString(),
+      valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
     },
     {
       field: 'expiresAt',
@@ -237,10 +227,10 @@ const ActiveTokens: React.FC = () => {
     },
   ];
 
-  const filteredTokens = mockTokens.filter(token => {
+  const filteredTokens = tokens.filter(token => {
     const matchesSearch = 
-      token.token.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      token.maskedCard.includes(searchTerm);
+      token.tokenValue.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      token.maskedPan.includes(searchTerm);
     const matchesStatus = statusFilter === 'ALL' || token.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -255,7 +245,8 @@ const ActiveTokens: React.FC = () => {
             variant="outlined"
             startIcon={<Refresh />}
             sx={{ mr: 1 }}
-            onClick={() => toast.info('Refreshing token list...')}
+            onClick={handleRefresh}
+            disabled={loading}
           >
             Refresh
           </Button>
@@ -338,6 +329,7 @@ const ActiveTokens: React.FC = () => {
           <DataGrid
             rows={filteredTokens}
             columns={columns}
+            loading={loading}
             checkboxSelection
             disableRowSelectionOnClick
             onRowSelectionModelChange={(selection) => setSelectedRows(selection as string[])}
@@ -345,12 +337,11 @@ const ActiveTokens: React.FC = () => {
             slots={{
               toolbar: GridToolbar,
             }}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 10, page: 0 },
-              },
-            }}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
             pageSizeOptions={[10, 25, 50]}
+            rowCount={totalElements}
+            paginationMode="server"
           />
         </Box>
       </Card>
@@ -377,7 +368,7 @@ const ActiveTokens: React.FC = () => {
         <DialogTitle>Suspend Token</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mt: 2 }}>
-            Are you sure you want to suspend token: <strong>{selectedToken?.token}</strong>?
+            Are you sure you want to suspend token: <strong>{selectedToken?.tokenValue}</strong>?
             This will prevent any further transactions using this token.
           </Alert>
         </DialogContent>
@@ -394,7 +385,7 @@ const ActiveTokens: React.FC = () => {
         <DialogTitle>Delete Token</DialogTitle>
         <DialogContent>
           <Alert severity="error" sx={{ mt: 2 }}>
-            Are you sure you want to permanently delete token: <strong>{selectedToken?.token}</strong>?
+            Are you sure you want to permanently delete token: <strong>{selectedToken?.tokenValue}</strong>?
             This action cannot be undone.
           </Alert>
         </DialogContent>

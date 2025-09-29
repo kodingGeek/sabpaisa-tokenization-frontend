@@ -41,6 +41,7 @@ const ComplianceAudit = lazy(() => import('./pages/compliance/ComplianceAudit'))
 
 // Admin pages
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+const MerchantManagement = lazy(() => import('./pages/admin/MerchantManagement'));
 const SystemConfig = lazy(() => import('./pages/admin/SystemConfig'));
 const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
 
@@ -174,6 +175,7 @@ const App: React.FC = () => {
                     {/* Merchant Portal Routes */}
                     <Route path="/merchant">
                       <Route index element={<MerchantPortal />} />
+                      <Route path="management" element={<MerchantManagement />} />
                       <Route path="tokens" element={<TokenManagement />} />
                       <Route path="tokens/generate" element={<TokenGenerate />} />
                       <Route path="tokens/active" element={<ActiveTokens />} />
@@ -201,6 +203,7 @@ const App: React.FC = () => {
                     <Route path="/admin" element={<PrivateRoute requiredRole="SYSTEM_ADMIN" />}>
                       <Route index element={<AdminConsole />} />
                       <Route path="users" element={<UserManagement />} />
+                      <Route path="merchants" element={<MerchantManagement />} />
                       <Route path="config" element={<SystemConfig />} />
                       <Route path="infrastructure" element={<Infrastructure />} />
                     </Route>
