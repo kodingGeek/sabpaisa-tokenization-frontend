@@ -33,6 +33,9 @@ const TokenHistory = lazy(() => import('./pages/merchant/TokenHistory'));
 const ThreatMonitor = lazy(() => import('./pages/security/ThreatMonitor'));
 const IncidentResponse = lazy(() => import('./pages/security/IncidentResponse'));
 const SecurityAnalytics = lazy(() => import('./pages/security/SecurityAnalytics'));
+const FraudDetection = lazy(() => import('./pages/security/FraudDetection'));
+const QuantumSecurity = lazy(() => import('./pages/security/QuantumSecurity'));
+const BiometricAuth = lazy(() => import('./pages/security/BiometricAuth'));
 
 // Compliance pages
 const RBIReports = lazy(() => import('./pages/compliance/RBIReports'));
@@ -44,6 +47,7 @@ const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const MerchantManagement = lazy(() => import('./pages/admin/MerchantManagement'));
 const SystemConfig = lazy(() => import('./pages/admin/SystemConfig'));
 const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
+const CloudReplication = lazy(() => import('./pages/admin/CloudReplication'));
 
 // Common pages
 const Profile = lazy(() => import('./pages/Profile'));
@@ -189,6 +193,9 @@ const App: React.FC = () => {
                       <Route path="threats" element={<ThreatMonitor />} />
                       <Route path="incidents" element={<IncidentResponse />} />
                       <Route path="analytics" element={<SecurityAnalytics />} />
+                      <Route path="fraud-detection" element={<FraudDetection />} />
+                      <Route path="quantum-security" element={<QuantumSecurity />} />
+                      <Route path="biometric-auth" element={<BiometricAuth />} />
                     </Route>
                     
                     {/* Compliance Team Routes */}
@@ -206,6 +213,7 @@ const App: React.FC = () => {
                       <Route path="merchants" element={<MerchantManagement />} />
                       <Route path="config" element={<SystemConfig />} />
                       <Route path="infrastructure" element={<Infrastructure />} />
+                      <Route path="cloud-replication" element={<CloudReplication />} />
                     </Route>
                   </Route>
                   

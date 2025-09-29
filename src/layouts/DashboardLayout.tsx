@@ -42,6 +42,9 @@ import {
   Storage,
   Lock,
   Business,
+  Shield,
+  Fingerprint,
+  CloudSync,
   Store,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -143,6 +146,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         { title: 'Threat Monitor', path: '/security/threats', icon: <Security /> },
         { title: 'Incident Response', path: '/security/incidents', icon: <Lock /> },
         { title: 'Security Analytics', path: '/security/analytics', icon: <Assessment /> },
+        { title: 'Fraud Detection', path: '/security/fraud-detection', icon: <Security /> },
+        { title: 'Quantum Security', path: '/security/quantum-security', icon: <Shield /> },
+        { title: 'Biometric Auth', path: '/security/biometric-auth', icon: <Fingerprint /> },
       ],
     },
     {
@@ -166,13 +172,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         { title: 'Merchant Management', path: '/admin/merchants', icon: <Business /> },
         { title: 'System Config', path: '/admin/config', icon: <Settings /> },
         { title: 'Infrastructure', path: '/admin/infrastructure', icon: <Storage /> },
+        { title: 'Cloud Replication', path: '/admin/cloud-replication', icon: <CloudSync /> },
       ],
     },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
-    !item.role || item.role.includes(userRole || '')
-  );
+  const filteredMenuItems = menuItems.filter(item => {
+    // Super user can see all menu items
+    if (currentUser?.email === 'superuser@sabpaisa.com') {
+      return true;
+    }
+    // Other users see items based on their role
+    return !item.role || item.role.includes(userRole || '');
+  });
 
   const isPathActive = (path: string) => location.pathname.startsWith(path);
 

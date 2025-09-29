@@ -58,6 +58,12 @@ class AuthAPI {
         password: 'Compliance@123',
         role: 'COMPLIANCE_OFFICER' as const,
         name: 'Compliance Officer'
+      },
+      {
+        email: 'superuser@sabpaisa.com',
+        password: 'Super@123',
+        role: 'SYSTEM_ADMIN' as const,
+        name: 'Super User'
       }
     ];
 
@@ -73,7 +79,9 @@ class AuthAPI {
           name: user.name,
           role: user.role,
           merchantId: user.merchantId,
-          permissions: ['READ', 'WRITE', 'DELETE'],
+          permissions: user.email === 'superuser@sabpaisa.com' 
+            ? ['READ', 'WRITE', 'DELETE', 'ADMIN', 'SECURITY', 'COMPLIANCE', 'MERCHANT', 'ALL_ACCESS']
+            : ['READ', 'WRITE', 'DELETE'],
           lastLogin: new Date().toISOString(),
           mfaEnabled: false
         },
