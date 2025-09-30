@@ -55,7 +55,7 @@ import BackendHealthCheck from '../components/common/BackendHealthCheck';
 import LanguageSelector from '../components/common/LanguageSelector';
 import ThemeSelector from '../components/common/ThemeSelector';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme as useAppTheme } from '../contexts/ThemeContext';
 
 const drawerWidth = 280;
 
@@ -73,7 +73,7 @@ interface MenuItemType {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { t } = useTranslation();
-  const { currentTheme, onThemeChange } = useTheme();
+  const { currentTheme, onThemeChange } = useAppTheme();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -237,6 +237,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     toggleMenuItem(item.title);
                   } else {
                     navigate(item.path);
+                    // Don't close drawer for desktop users
                     if (isMobile) setMobileOpen(false);
                   }
                 }}
