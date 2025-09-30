@@ -48,6 +48,13 @@ const ComplianceAudit = lazy(() => import('./pages/compliance/ComplianceAudit'))
 // Admin pages
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const MerchantManagement = lazy(() => import('./pages/admin/MerchantManagement'));
+
+// Enterprise pages
+const PlatformTokenization = lazy(() => import('./pages/tokenization/PlatformTokenization'));
+const BulkRetokenization = lazy(() => import('./pages/tokenization/BulkRetokenization'));
+const TokenMonetization = lazy(() => import('./pages/billing/TokenMonetization'));
+const PlatformManagement = lazy(() => import('./pages/platforms/PlatformManagement'));
+const CardTokenView = lazy(() => import('./pages/tokenization/CardTokenView'));
 const SystemConfig = lazy(() => import('./pages/admin/SystemConfig'));
 const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
 const CloudReplication = lazy(() => import('./pages/admin/CloudReplication'));
@@ -134,6 +141,11 @@ const App: React.FC = () => {
                       <Route path="tokens/generate" element={<TokenGenerate />} />
                       <Route path="tokens/active" element={<ActiveTokens />} />
                       <Route path="tokens/history" element={<TokenHistory />} />
+                      <Route path="tokens/platform" element={<PlatformTokenization />} />
+                      <Route path="tokens/bulk-retokenize" element={<BulkRetokenization />} />
+                      <Route path="tokens/card-view" element={<CardTokenView />} />
+                      <Route path="platforms" element={<PlatformManagement />} />
+                      <Route path="billing" element={<TokenMonetization />} />
                       <Route path="audit" element={<AuditTrails />} />
                     </Route>
                     

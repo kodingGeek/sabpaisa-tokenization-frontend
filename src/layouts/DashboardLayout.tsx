@@ -46,6 +46,10 @@ import {
   Fingerprint,
   CloudSync,
   Store,
+  BusinessCenter,
+  AttachMoney,
+  Refresh,
+  CreditCard,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
@@ -135,12 +139,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         { title: t('navigation.generateToken'), path: '/merchant/tokens/generate', icon: <VpnKey /> },
         { title: t('navigation.activeTokens'), path: '/merchant/tokens/active', icon: <Token /> },
         { title: t('navigation.tokenHistory'), path: '/merchant/tokens/history', icon: <Timeline /> },
+        { title: 'Platform Tokens', path: '/merchant/tokens/platform', icon: <Business /> },
+        { title: 'Bulk Retokenization', path: '/merchant/tokens/bulk-retokenize', icon: <Refresh /> },
+        { title: 'Card Token View', path: '/merchant/tokens/card-view', icon: <CreditCard /> },
       ],
     },
     {
       title: t('navigation.merchantManagement'),
       path: '/merchant/management',
       icon: <Store />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
+    },
+    {
+      title: 'Platforms',
+      path: '/merchant/platforms',
+      icon: <BusinessCenter />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
+    },
+    {
+      title: 'Billing & Monetization',
+      path: '/merchant/billing',
+      icon: <AttachMoney />,
       role: ['MERCHANT', 'SYSTEM_ADMIN'],
     },
     {
