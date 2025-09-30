@@ -21,6 +21,7 @@ import {
   Chip,
   useTheme,
   useMediaQuery,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -46,6 +47,8 @@ import {
   Fingerprint,
   CloudSync,
   Store,
+  ChevronLeft,
+  ChevronRight,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
@@ -84,6 +87,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const userRole = useAppSelector(selectUserRole);
   
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [miniDrawer, setMiniDrawer] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
   const [openMenuItems, setOpenMenuItems] = useState<{ [key: string]: boolean }>({});
@@ -184,9 +188,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
+    // Super user can see all menu items
     if (currentUser?.email === 'superuser@sabpaisa.com') {
       return true;
     }
+    // Other users see items based on their role
     return !item.role || item.role.includes(userRole || '');
   });
 
@@ -197,14 +203,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <Toolbar sx={{ 
         backgroundColor: 'primary.main', 
         color: 'white',
+        minHeight: { xs: 56, sm: 64 },
+        px: { xs: 2, sm: 3 }
       }}>
-        <Lock sx={{ mr: 1 }} />
-        <Typography variant="h6" noWrap>
+        <Lock sx={{ mr: 2 }} />
+        <Typography variant="h6" noWrap fontWeight="bold">
           {t('app.title')}
         </Typography>
       </Toolbar>
       <Divider />
       
+      {/* User Info */}
       <Box sx={{ p: 2, backgroundColor: 'background.paper' }}>
         <Box display="flex" alignItems="center" mb={1}>
           <Avatar sx={{ mr: 1, width: 32, height: 32 }}>
@@ -226,30 +235,42 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       
       <Divider />
       
+      {/* Menu Items */}
       <List>
         {filteredMenuItems.map((item) => (
           <React.Fragment key={item.title}>
             <ListItem disablePadding>
               <ListItemButton
                 onClick={() => {
-                  if (item.children) {
+                  if (item.children && !(miniDrawer && !isMobile)) {
                     toggleMenuItem(item.title);
                   } else {
                     navigate(item.path);
+                    // Don't close drawer for desktop users
                     if (isMobile) setMobileOpen(false);
                   }
                 }}
                 selected={isPathActive(item.path)}
               >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.title} />
-                {item.children && (
+                <ListItemIcon>
+                  <Tooltip title={miniDrawer && !isMobile ? item.title : ''} placement="right">
+                    <span>{item.icon}</span>
+                  </Tooltip>
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.title} 
+                  sx={{ 
+                    opacity: miniDrawer && !isMobile ? 0 : 1,
+                    transition: theme.transitions.create('opacity'),
+                  }}
+                />
+                {item.children && !(miniDrawer && !isMobile) && (
                   openMenuItems[item.title] ? <ExpandLess /> : <ExpandMore />
                 )}
               </ListItemButton>
             </ListItem>
             
-            {item.children && (
+            {item.children && !(miniDrawer && !isMobile) && (
               <Collapse in={openMenuItems[item.title]} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
                   {item.children.map((child) => (
@@ -262,8 +283,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                       }}
                       selected={isPathActive(child.path)}
                     >
-                      <ListItemIcon>{child.icon}</ListItemIcon>
-                      <ListItemText primary={child.title} />
+                      <ListItemIcon>
+                        <Tooltip title={miniDrawer && !isMobile ? child.title : ''} placement="right">
+                          <span>{child.icon}</span>
+                        </Tooltip>
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={child.title}
+                        sx={{ 
+                          opacity: miniDrawer && !isMobile ? 0 : 1,
+                          transition: theme.transitions.create('opacity'),
+                        }}
+                      />
                     </ListItemButton>
                   ))}
                 </List>
@@ -275,109 +306,104 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       
       <Divider />
       
+      {/* Security Indicator */}
       <Box sx={{ p: 2 }}>
         <SecurityIndicator />
+      </Box>
+      
+      {/* Mini Drawer Toggle */}
+      <Box sx={{ 
+        position: 'absolute',
+        bottom: 16,
+        left: '50%',
+        transform: 'translateX(-50%)'
+      }}>
+        <Tooltip title={miniDrawer ? "Expand menu" : "Collapse menu"} placement="top">
+          <IconButton 
+            size="small"
+            onClick={() => setMiniDrawer(!miniDrawer)}
+            sx={{ 
+              backgroundColor: 'background.paper',
+              boxShadow: 1,
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              }
+            }}
+          >
+            {miniDrawer ? <ChevronLeft /> : <ChevronRight />}
+          </IconButton>
+        </Tooltip>
       </Box>
     </div>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* Main content first */}
-      <Box
-        component="main"
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* App Bar */}
+      <AppBar
+        position="fixed"
         sx={{
-          flexGrow: 1,
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
+          width: { sm: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          left: 0,
+          right: { md: drawerWidth },
         }}
       >
-        {/* AppBar */}
-        <AppBar
-          position="fixed"
-          sx={{
-            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-            left: 0,
-          }}
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { md: 'none' } }}
-            >
-              <MenuIcon />
-            </IconButton>
-            
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              {location.pathname === '/dashboard' ? t('navigation.dashboard') : 
-               location.pathname.split('/').filter(Boolean).map(s => 
-                 s.charAt(0).toUpperCase() + s.slice(1)
-               ).join(' > ')}
-            </Typography>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            {location.pathname === '/dashboard' ? t('navigation.dashboard') : 
+             location.pathname.split('/').filter(Boolean).map(s => 
+               s.charAt(0).toUpperCase() + s.slice(1)
+             ).join(' > ')}
+          </Typography>
+          
+          {/* Mobile Menu Button - moved to the end */}
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="end"
+            onClick={handleDrawerToggle}
+            sx={{ display: { md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LanguageSelector />
-              <ThemeSelector 
-                currentTheme={currentTheme} 
-                onThemeChange={onThemeChange} 
-              />
-              <BackendHealthCheck />
-              
-              <IconButton
-                size="large"
-                color="inherit"
-                onClick={handleNotificationMenuOpen}
-              >
-                <Badge badgeContent={4} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
-              
-              <IconButton
-                size="large"
-                edge="end"
-                onClick={handleProfileMenuOpen}
-                color="inherit"
-              >
-                <AccountCircle />
-              </IconButton>
-            </Box>
-          </Toolbar>
-        </AppBar>
-        
-        {/* Content */}
-        <Box sx={{ p: 3, pt: 10 }}>
-          {children}
-        </Box>
-      </Box>
-      
-      {/* Right Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-      >
-        <Drawer
-          variant={isMobile ? 'temporary' : 'permanent'}
-          anchor="right"
-          open={isMobile ? mobileOpen : true}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+          {/* Right side toolbar items */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Language Selector */}
+            <LanguageSelector />
+            
+            {/* Theme Selector */}
+            <ThemeSelector 
+              currentTheme={currentTheme} 
+              onThemeChange={onThemeChange} 
+            />
+            
+            {/* Backend Health Check */}
+            <BackendHealthCheck />
+
+          {/* Notifications */}
+            <IconButton
+              size="large"
+              color="inherit"
+              onClick={handleNotificationMenuOpen}
+            >
+              <Badge badgeContent={4} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          
+            {/* Profile Menu */}
+            <IconButton
+              size="large"
+              edge="end"
+              onClick={handleProfileMenuOpen}
+              color="inherit"
+            >
+              <AccountCircle />
+            </IconButton>
+          </Box>
+        </Toolbar>
+      </AppBar>
       
       {/* Notification Menu */}
       <Menu
@@ -421,6 +447,60 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {t('app.logout')}
         </MenuItem>
       </Menu>
+      
+      {/* Drawer - Right Side */}
+      <Drawer
+        variant={isMobile ? 'temporary' : 'permanent'}
+        anchor="right"
+        open={isMobile ? mobileOpen : true}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            borderLeft: 1,
+            borderColor: 'divider',
+            boxShadow: theme.shadows[3],
+            width: miniDrawer && !isMobile ? 70 : drawerWidth,
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflowX: 'hidden',
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+      
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: { xs: 2, sm: 3 },
+          width: '100%',
+          marginRight: { md: miniDrawer ? 70 : drawerWidth },
+          transition: theme.transitions.create(['margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          transition: theme.transitions.create(['margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
+        }}
+      >
+        <Toolbar />
+        <Container maxWidth={false} sx={{ maxWidth: '1600px', ml: 0 }}>
+          {children}
+        </Container>
+      </Box>
     </Box>
   );
 };
