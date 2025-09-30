@@ -52,6 +52,10 @@ import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { selectCurrentUser, selectUserRole, logout } from '../store/slices/authSlice';
 import SecurityIndicator from '../components/common/SecurityIndicator';
 import BackendHealthCheck from '../components/common/BackendHealthCheck';
+import LanguageSelector from '../components/common/LanguageSelector';
+import ThemeSelector from '../components/common/ThemeSelector';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
 
 const drawerWidth = 280;
 
@@ -68,6 +72,8 @@ interface MenuItemType {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const { t } = useTranslation();
+  const { currentTheme, onThemeChange } = useTheme();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -116,29 +122,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const menuItems: MenuItemType[] = [
     {
-      title: 'Dashboard',
+      title: t('navigation.dashboard'),
       path: '/dashboard',
       icon: <Dashboard />,
     },
     {
-      title: 'Token Management',
+      title: t('navigation.tokenManagement'),
       path: '/merchant/tokens',
       icon: <Token />,
       role: ['MERCHANT', 'SYSTEM_ADMIN'],
       children: [
-        { title: 'Generate Token', path: '/merchant/tokens/generate', icon: <VpnKey /> },
-        { title: 'Active Tokens', path: '/merchant/tokens/active', icon: <Token /> },
-        { title: 'Token History', path: '/merchant/tokens/history', icon: <Timeline /> },
+        { title: t('navigation.generateToken'), path: '/merchant/tokens/generate', icon: <VpnKey /> },
+        { title: t('navigation.activeTokens'), path: '/merchant/tokens/active', icon: <Token /> },
+        { title: t('navigation.tokenHistory'), path: '/merchant/tokens/history', icon: <Timeline /> },
       ],
     },
     {
-      title: 'Merchant Management',
+      title: t('navigation.merchantManagement'),
       path: '/merchant/management',
       icon: <Store />,
       role: ['MERCHANT', 'SYSTEM_ADMIN'],
     },
     {
-      title: 'Security Center',
+      title: t('navigation.securityCenter'),
       path: '/security',
       icon: <Security />,
       role: ['SECURITY_OFFICER', 'SYSTEM_ADMIN'],
@@ -152,7 +158,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       ],
     },
     {
-      title: 'Compliance',
+      title: t('navigation.compliance'),
       path: '/compliance',
       icon: <Gavel />,
       role: ['COMPLIANCE_OFFICER', 'SYSTEM_ADMIN'],
@@ -163,7 +169,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       ],
     },
     {
-      title: 'Administration',
+      title: t('navigation.administration'),
       path: '/admin',
       icon: <AdminPanelSettings />,
       role: ['SYSTEM_ADMIN'],
@@ -193,7 +199,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <Toolbar sx={{ backgroundColor: 'primary.main', color: 'white' }}>
         <Lock sx={{ mr: 1 }} />
         <Typography variant="h6" noWrap>
-          SabPaisa Tokenization
+          {t('app.title')}
         </Typography>
       </Toolbar>
       <Divider />
@@ -284,16 +290,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          mr: { md: `${drawerWidth}px` },
         }}
       >
         <Toolbar>
           <IconButton
             color="inherit"
             aria-label="open drawer"
-            edge="start"
+            edge="end"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ ml: 2, display: { md: 'none' }, order: 3 }}
           >
             <MenuIcon />
           </IconButton>
@@ -304,6 +310,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                s.charAt(0).toUpperCase() + s.slice(1)
              ).join(' > ')}
           </Typography>
+
+          {/* Language Selector */}
+          <Box sx={{ mr: 1 }}>
+            <LanguageSelector />
+          </Box>
+
+          {/* Theme Selector */}
+          <ThemeSelector 
+            currentTheme={currentTheme} 
+            onThemeChange={onThemeChange} 
+          />
 
           {/* Backend Health Check */}
           <Box sx={{ mr: 2 }}>
@@ -363,26 +380,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       >
         <MenuItem onClick={() => { navigate('/profile'); handleProfileMenuClose(); }}>
           <ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>
-          Profile
+          {t('app.profile')}
         </MenuItem>
         <MenuItem onClick={() => { navigate('/settings'); handleProfileMenuClose(); }}>
           <ListItemIcon><Settings fontSize="small" /></ListItemIcon>
-          Settings
+          {t('app.settings')}
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleLogout}>
           <ListItemIcon><ExitToApp fontSize="small" /></ListItemIcon>
-          Logout
+          {t('app.logout')}
         </MenuItem>
       </Menu>
       
-      {/* Drawer */}
+      {/* Drawer - Right Side */}
       <Box
         component="nav"
         sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
       >
         <Drawer
           variant={isMobile ? 'temporary' : 'permanent'}
+          anchor="right"
           open={isMobile ? mobileOpen : true}
           onClose={handleDrawerToggle}
           ModalProps={{
@@ -406,6 +424,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           flexGrow: 1,
           p: 3,
           width: { md: `calc(100% - ${drawerWidth}px)` },
+          mr: { md: `${drawerWidth}px` },
           minHeight: '100vh',
           backgroundColor: 'background.default',
         }}

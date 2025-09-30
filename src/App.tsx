@@ -1,6 +1,6 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -12,6 +12,8 @@ import LoadingScreen from './components/common/LoadingScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import SessionTimeout from './components/security/SessionTimeout';
 import SecurityHeaders from './components/security/SecurityHeaders';
+import { themes, createCustomTheme } from './themes/themes';
+import './i18n/i18n'; // Initialize i18n
 
 // Lazy load pages for better performance
 const Login = lazy(() => import('./pages/Login'));
@@ -55,31 +57,19 @@ const Settings = lazy(() => import('./pages/Settings'));
 const IntegrationTest = lazy(() => import('./pages/IntegrationTest'));
 const SimpleTokenize = lazy(() => import('./pages/SimpleTokenize'));
 
-// Create secure theme
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
-    },
-    secondary: {
-      main: '#dc004e',
-      light: '#e33371',
-      dark: '#9a0036',
-    },
-    error: {
-      main: '#d32f2f',
-    },
-    warning: {
-      main: '#ed6c02',
-    },
-    info: {
-      main: '#0288d1',
-    },
-    success: {
-      main: '#2e7d32',
+const App: React.FC = () => {
+  // Load saved theme from localStorage or use default
+  const [currentThemeId, setCurrentThemeId] = useState(() => {
+    return localStorage.getItem('selectedTheme') || 'default-light';
+  });
+
+  const currentThemeConfig = themes.find(t => t.id === currentThemeId) || themes[0];
+  const theme = createCustomTheme(currentThemeConfig);
+
+  const handleThemeChange = (themeId: string) => {
+    setCurrentThemeId(themeId);
+    localStorage.setItem('selectedTheme', themeId);
+  };
     },
     background: {
       default: '#f5f5f5',
@@ -157,11 +147,12 @@ const App: React.FC = () => {
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <ErrorBoundary>
-          <SecurityProvider>
-            <SecurityHeaders />
-            <SessionTimeout />
-            <Router>
+        <AppThemeProvider currentTheme={currentThemeId} onThemeChange={handleThemeChange}>
+          <ErrorBoundary>
+            <SecurityProvider>
+              <SecurityHeaders />
+              <SessionTimeout />
+              <Router>
               <Suspense fallback={<LoadingScreen />}>
                 <Routes>
                   {/* Public Routes */}
@@ -220,11 +211,11 @@ const App: React.FC = () => {
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Suspense>
-            </Router>
-            
-            {/* Toast Notifications */}
-            <ToastContainer
+                </Suspense>
+              </Router>
+              
+              {/* Toast Notifications */}
+              <ToastContainer
               position="top-right"
               autoClose={5000}
               hideProgressBar={false}
@@ -235,9 +226,10 @@ const App: React.FC = () => {
               draggable
               pauseOnHover
               theme="light"
-            />
-          </SecurityProvider>
-        </ErrorBoundary>
+              />
+            </SecurityProvider>
+          </ErrorBoundary>
+        </AppThemeProvider>
       </ThemeProvider>
     </Provider>
   );

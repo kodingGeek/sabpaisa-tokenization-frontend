@@ -1,11 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
-import { createAppTheme } from '../utils/theme';
+import React, { createContext, useContext } from 'react';
 
 interface ThemeContextType {
-  mode: 'light' | 'dark';
-  toggleTheme: () => void;
+  currentTheme: string;
+  onThemeChange: (themeId: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -13,45 +10,21 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 };
 
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
-export const AppThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [mode, setMode] = useState<'light' | 'dark'>(() => {
-    // Check for saved theme preference or default to light mode
-    const savedMode = localStorage.getItem('themeMode');
-    return (savedMode as 'light' | 'dark') || 'light';
-  });
-
-  useEffect(() => {
-    // Save theme preference
-    localStorage.setItem('themeMode', mode);
-    
-    // Update body class for any global styles
-    document.body.classList.remove('light-mode', 'dark-mode');
-    document.body.classList.add(`${mode}-mode`);
-  }, [mode]);
-
-  const toggleTheme = () => {
-    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-  };
-
-  const theme = createAppTheme(mode);
-
+export const AppThemeProvider: React.FC<{
+  children: React.ReactNode;
+  currentTheme: string;
+  onThemeChange: (themeId: string) => void;
+}> = ({ children, currentTheme, onThemeChange }) => {
   return (
-    <ThemeContext.Provider value={{ mode, toggleTheme }}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
+    <ThemeContext.Provider value={{ currentTheme, onThemeChange }}>
+      {children}
     </ThemeContext.Provider>
   );
 };
 
-export default AppThemeProvider;
+export default ThemeContext;

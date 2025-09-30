@@ -1,0 +1,53 @@
+{
+  "app": {
+    "title": "சப்பைசா டோக்கனைசேஷன்",
+    "welcome": "வரவேற்பு",
+    "logout": "வெளியேறு",
+    "profile": "சுயவிவரம்",
+    "settings": "அமைப்புகள்"
+  },
+  "navigation": {
+    "dashboard": "டாஷ்போர்டு",
+    "tokenManagement": "டோக்கன் மேலாண்மை",
+    "generateToken": "டோக்கன் உருவாக்கு",
+    "activeTokens": "செயலில் உள்ள டோக்கன்கள்",
+    "tokenHistory": "டோக்கன் வரலாறு",
+    "merchantManagement": "வணிகர் மேலாண்மை",
+    "securityCenter": "பாதுகாப்பு மையம்",
+    "threatMonitor": "அச்சுறுத்தல் கண்காணிப்பு",
+    "incidentResponse": "சம்பவ பதில்",
+    "securityAnalytics": "பாதுகாப்பு பகுப்பாய்வு",
+    "fraudDetection": "மோசடி கண்டறிதல்",
+    "quantumSecurity": "குவாண்டம் பாதுகாப்பு",
+    "biometricAuth": "பயோமெட்ரிக் அங்கீகாரம்",
+    "compliance": "இணக்கம்",
+    "rbiReports": "RBI அறிக்கைகள்",
+    "pciDss": "PCI DSS நிலை",
+    "auditTrails": "தணிக்கை பாதைகள்",
+    "administration": "நிர்வாகம்",
+    "userManagement": "பயனர் மேலாண்மை",
+    "systemConfig": "கணினி கட்டமைப்பு",
+    "infrastructure": "உள்கட்டமைப்பு",
+    "cloudReplication": "கிளவுட் நகலெடுப்பு"
+  },
+  "login": {
+    "title": "உள்நுழைய",
+    "email": "மின்னஞ்சல் முகவரி",
+    "password": "கடவுச்சொல்",
+    "rememberMe": "என்னை நினைவில் கொள்",
+    "forgotPassword": "கடவுச்சொல் மறந்துவிட்டதா?",
+    "signIn": "உள்நுழைய",
+    "invalidCredentials": "தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்",
+    "welcomeBack": "மீண்டும் வரவேற்கிறோம்!"
+  },
+  "common": {
+    "save": "சேமி",
+    "cancel": "ரத்து செய்",
+    "delete": "நீக்கு",
+    "edit": "திருத்து",
+    "view": "காண்க",
+    "search": "தேடு",
+    "yes": "ஆம்",
+    "no": "இல்லை"
+  }
+}
