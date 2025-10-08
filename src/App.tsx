@@ -17,6 +17,7 @@ import './i18n/i18n'; // Initialize i18n
 import { AppThemeProvider } from './contexts/ThemeContext';
 
 // Lazy load pages for better performance
+const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const MerchantPortal = lazy(() => import('./pages/MerchantPortal'));
@@ -51,6 +52,7 @@ const MerchantManagement = lazy(() => import('./pages/admin/MerchantManagement')
 
 // Enterprise pages
 const PlatformTokenization = lazy(() => import('./pages/tokenization/PlatformTokenization'));
+const UnifiedTokenization = lazy(() => import('./pages/tokenization/UnifiedTokenization'));
 const BulkRetokenization = lazy(() => import('./pages/tokenization/BulkRetokenization'));
 const TokenMonetization = lazy(() => import('./pages/billing/TokenMonetization'));
 const PlatformManagement = lazy(() => import('./pages/platforms/PlatformManagement'));
@@ -122,11 +124,11 @@ const App: React.FC = () => {
               <Suspense fallback={<LoadingScreen />}>
                 <Routes>
                   {/* Public Routes */}
+                  <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Login />} />
                   
                   {/* Protected Routes */}
                   <Route element={<PrivateRoute />}>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
@@ -142,6 +144,7 @@ const App: React.FC = () => {
                       <Route path="tokens/active" element={<ActiveTokens />} />
                       <Route path="tokens/history" element={<TokenHistory />} />
                       <Route path="tokens/platform" element={<PlatformTokenization />} />
+                      <Route path="tokens/unified" element={<UnifiedTokenization />} />
                       <Route path="tokens/bulk-retokenize" element={<BulkRetokenization />} />
                       <Route path="tokens/card-view" element={<CardTokenView />} />
                       <Route path="platforms" element={<PlatformManagement />} />

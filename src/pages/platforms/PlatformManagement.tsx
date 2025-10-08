@@ -32,7 +32,7 @@ import {
   Cancel as InactiveIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../services/api';
+import api, { platformApi, mockApi } from '../../services/api';
 
 interface Platform {
   id: number;
@@ -271,7 +271,7 @@ const PlatformManagement: React.FC = () => {
                     <IconButton
                       size="small"
                       onClick={() => handleDelete(platform)}
-                      disabled={platform.tokenCount && platform.tokenCount > 0}
+                      disabled={!!platform.tokenCount && platform.tokenCount > 0}
                     >
                       <DeleteIcon />
                     </IconButton>

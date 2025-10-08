@@ -70,6 +70,15 @@ const Login: React.FC = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
 
+  const features = [
+    { icon: '🔐', title: 'Standard Tokenization', desc: 'PCI DSS Level 1 Compliant' },
+    { icon: '🧬', title: 'Biometric Security', desc: 'Multi-modal Authentication' },
+    { icon: '⚛️', title: 'Quantum-Resistant', desc: '50+ Years Protection' },
+    { icon: '☁️', title: 'Multi-Cloud', desc: '99.999% Availability' },
+    { icon: '🤖', title: 'AI Fraud Detection', desc: 'Real-time Analysis' },
+    { icon: '🌐', title: 'Unified API', desc: 'Single Integration' },
+  ];
+
   const from = location.state?.from?.pathname || '/dashboard';
 
   const {
@@ -238,16 +247,94 @@ const Login: React.FC = () => {
   const steps = ['Credentials', 'Verification'];
 
   return (
-    <Container component="main" maxWidth="sm">
+    <Box sx={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      {/* Animated Background with Features */}
       <Box
         sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minHeight: '80vh',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            width: '200%',
+            height: '200%',
+            top: '-50%',
+            left: '-50%',
+            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+            animation: 'rotate 30s linear infinite',
+          },
+          '@keyframes rotate': {
+            '0%': { transform: 'rotate(0deg)' },
+            '100%': { transform: 'rotate(360deg)' },
+          },
         }}
       >
+        {/* Feature Cards Animation */}
+        <Box
+          sx={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            opacity: 0.1,
+          }}
+        >
+          {features.map((feature, index) => (
+            <Box
+              key={index}
+              sx={{
+                position: 'absolute',
+                left: `${10 + (index % 3) * 35}%`,
+                top: `${10 + Math.floor(index / 3) * 40}%`,
+                transform: 'translate(-50%, -50%)',
+                animation: `float${index % 3} ${15 + index}s ease-in-out infinite`,
+                '@keyframes float0': {
+                  '0%, 100%': { transform: 'translate(-50%, -50%) translateY(0px)' },
+                  '50%': { transform: 'translate(-50%, -50%) translateY(-20px)' },
+                },
+                '@keyframes float1': {
+                  '0%, 100%': { transform: 'translate(-50%, -50%) translateY(0px)' },
+                  '50%': { transform: 'translate(-50%, -50%) translateY(-30px)' },
+                },
+                '@keyframes float2': {
+                  '0%, 100%': { transform: 'translate(-50%, -50%) translateY(0px)' },
+                  '50%': { transform: 'translate(-50%, -50%) translateY(-25px)' },
+                },
+              }}
+            >
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 3,
+                  background: alpha(theme.palette.background.paper, 0.9),
+                  backdropFilter: 'blur(10px)',
+                  minWidth: 200,
+                  textAlign: 'center',
+                }}
+              >
+                <Typography variant="h2" sx={{ mb: 1 }}>{feature.icon}</Typography>
+                <Typography variant="h6" fontWeight="600">{feature.title}</Typography>
+                <Typography variant="caption" color="text.secondary">{feature.desc}</Typography>
+              </Paper>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      <Container component="main" maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
+        <Box
+          sx={{
+            marginTop: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minHeight: '80vh',
+          }}
+        >
         <Fade in timeout={1000}>
           <Paper
             elevation={24}
@@ -654,6 +741,7 @@ const Login: React.FC = () => {
         </Fade>
       </Box>
     </Container>
+    </Box>
   );
 };
 

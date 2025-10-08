@@ -50,6 +50,7 @@ import {
   AttachMoney,
   Refresh,
   CreditCard,
+  Hub,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
@@ -139,10 +140,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         { title: t('navigation.generateToken'), path: '/merchant/tokens/generate', icon: <VpnKey /> },
         { title: t('navigation.activeTokens'), path: '/merchant/tokens/active', icon: <Token /> },
         { title: t('navigation.tokenHistory'), path: '/merchant/tokens/history', icon: <Timeline /> },
+        { title: 'Unified Tokenization', path: '/merchant/tokens/unified', icon: <Security /> },
         { title: 'Platform Tokens', path: '/merchant/tokens/platform', icon: <Business /> },
         { title: 'Bulk Retokenization', path: '/merchant/tokens/bulk-retokenize', icon: <Refresh /> },
         { title: 'Card Token View', path: '/merchant/tokens/card-view', icon: <CreditCard /> },
       ],
+    },
+    {
+      title: 'Unified Tokenization',
+      path: '/merchant/tokens/unified',
+      icon: <Hub />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
     },
     {
       title: t('navigation.merchantManagement'),

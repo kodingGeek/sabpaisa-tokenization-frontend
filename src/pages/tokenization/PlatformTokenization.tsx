@@ -27,7 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 interface Platform {
   id: number;

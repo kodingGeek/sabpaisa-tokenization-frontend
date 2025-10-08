@@ -39,7 +39,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../services/api';
+import api, { bulkApi, mockApi } from '../../services/api';
 
 interface BulkRequest {
   requestId: string;

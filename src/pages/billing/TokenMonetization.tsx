@@ -49,7 +49,7 @@ import {
   Cell
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../services/api';
+import api, { billingApi, mockApi } from '../../services/api';
 
 interface BillingDashboard {
   currentMonthUsage: {

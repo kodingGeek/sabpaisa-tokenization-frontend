@@ -35,7 +35,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../services/api';
+import api, { tokenizationApi, mockApi } from '../../services/api';
 
 interface CardToken {
   tokenId: number;
