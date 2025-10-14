@@ -18,6 +18,10 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  FormControlLabel,
+  Switch,
+  InputAdornment,
+  Chip,
 } from '@mui/material';
 import { CreditCard, Security } from '@mui/icons-material';
 import { toast } from 'react-toastify';
@@ -36,10 +40,20 @@ const TokenGenerate: React.FC = () => {
     expiryMonth: '',
     expiryYear: '',
     cardholderName: '',
+    algorithmType: 'SIMPLE',
     tokenType: 'FPT',
     purpose: 'ECOMMERCE',
     domain: '',
-    merchantId: ''
+    merchantId: '',
+    customerId: '',
+    customerEmail: '',
+    customerPhone: '',
+    transactionId: '',
+    transactionAmount: '',
+    transactionCurrency: 'INR',
+    isCof: false,
+    cofContractId: '',
+    cofInitialTransactionId: ''
   });
   
   const [tokenResult, setTokenResult] = useState<any>(null);
@@ -70,7 +84,7 @@ const TokenGenerate: React.FC = () => {
     }
   };
 
-  const steps = ['Card Details', 'Token Configuration', 'Review & Generate', 'Token Generated'];
+  const steps = ['Card Details', 'Algorithm & Configuration', 'Additional Details', 'Review & Generate', 'Token Generated'];
 
   const handleFieldChange = (field: string, value: string) => {
     console.log(`Field ${field} changed to:`, value);
@@ -108,16 +122,29 @@ const TokenGenerate: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await tokenizationService.tokenize({
+      const payload: any = {
         cardNumber: cleanCardNumber,
-        merchantId: formData.merchantId
-      });
+        merchantId: formData.merchantId,
+        algorithmType: formData.algorithmType,
+        customerId: formData.customerId || undefined,
+        customerEmail: formData.customerEmail || undefined,
+        customerPhone: formData.customerPhone || undefined,
+        transactionId: formData.transactionId || undefined,
+        transactionAmount: formData.transactionAmount ? parseFloat(formData.transactionAmount) : undefined,
+        transactionCurrency: formData.transactionCurrency || 'INR',
+        isCof: formData.isCof,
+        cofContractId: formData.isCof ? formData.cofContractId : undefined,
+        cofInitialTransactionId: formData.isCof ? formData.cofInitialTransactionId : undefined
+      };
+      
+      // Call v2 API for enhanced tokenization
+      const response = await tokenizationService.tokenizeV2(payload);
       
       console.log('API Response:', response);
       
       if (response.success) {
         setTokenResult(response);
-        setActiveStep(3);
+        setActiveStep(4);
         toast.success('Token generated successfully!');
       } else {
         toast.error(response.message || 'Tokenization failed');
@@ -200,33 +227,169 @@ const TokenGenerate: React.FC = () => {
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Token Type"
-                value={formData.tokenType}
-                onChange={(e) => handleFieldChange('tokenType', e.target.value)}
+              <FormControl fullWidth>
+                <InputLabel>Tokenization Algorithm</InputLabel>
+                <Select
+                  value={formData.algorithmType}
+                  onChange={(e) => handleFieldChange('algorithmType', e.target.value)}
+                  label="Tokenization Algorithm"
+                >
+                  <MenuItem value="SIMPLE">
+                    <Box>
+                      <Typography variant="body1">Simple</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Random 16-digit numeric token
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="COF">
+                    <Box>
+                      <Typography variant="body1">Card-on-File (COF)</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Deterministic token for recurring payments
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="FPE">
+                    <Box>
+                      <Typography variant="body1">Format Preserving Encryption (FPE)</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Maintains card format and Luhn validity
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isCof}
+                    onChange={(e) => handleFieldChange('isCof', e.target.checked.toString())}
+                  />
+                }
+                label="Card-on-File (COF) Transaction"
               />
             </Grid>
+            
+            {formData.isCof && (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="COF Contract ID"
+                    value={formData.cofContractId}
+                    onChange={(e) => handleFieldChange('cofContractId', e.target.value)}
+                    required={formData.isCof}
+                    helperText="Unique identifier for the COF agreement"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Initial Transaction ID"
+                    value={formData.cofInitialTransactionId}
+                    onChange={(e) => handleFieldChange('cofInitialTransactionId', e.target.value)}
+                    required={formData.isCof}
+                    helperText="ID of the first transaction in this COF series"
+                  />
+                </Grid>
+              </>
+            )}
+            
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Purpose"
-                value={formData.purpose}
-                onChange={(e) => handleFieldChange('purpose', e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Domain (Optional)"
-                value={formData.domain}
-                onChange={(e) => handleFieldChange('domain', e.target.value)}
-              />
+              <Alert severity="info">
+                {formData.algorithmType === 'SIMPLE' && 
+                  "Simple algorithm generates a random 16-digit token for general use cases."}
+                {formData.algorithmType === 'COF' && 
+                  "COF algorithm generates deterministic tokens ideal for subscription and recurring payments."}
+                {formData.algorithmType === 'FPE' && 
+                  "FPE algorithm preserves the format of the original card number while maintaining security."}
+              </Alert>
             </Grid>
           </Grid>
         );
         
       case 2:
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Customer Information (Optional)</Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Customer ID"
+                value={formData.customerId}
+                onChange={(e) => handleFieldChange('customerId', e.target.value)}
+                helperText="Your internal customer identifier"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Customer Email"
+                type="email"
+                value={formData.customerEmail}
+                onChange={(e) => handleFieldChange('customerEmail', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Customer Phone"
+                value={formData.customerPhone}
+                onChange={(e) => handleFieldChange('customerPhone', e.target.value)}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>Transaction Details (Optional)</Typography>
+            </Grid>
+            
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Transaction ID"
+                value={formData.transactionId}
+                onChange={(e) => handleFieldChange('transactionId', e.target.value)}
+                helperText="Reference to the original transaction"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Transaction Amount"
+                type="number"
+                value={formData.transactionAmount}
+                onChange={(e) => handleFieldChange('transactionAmount', e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">₹</InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
+                <InputLabel>Currency</InputLabel>
+                <Select
+                  value={formData.transactionCurrency}
+                  onChange={(e) => handleFieldChange('transactionCurrency', e.target.value)}
+                  label="Currency"
+                >
+                  <MenuItem value="INR">INR - Indian Rupee</MenuItem>
+                  <MenuItem value="USD">USD - US Dollar</MenuItem>
+                  <MenuItem value="EUR">EUR - Euro</MenuItem>
+                  <MenuItem value="GBP">GBP - British Pound</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        );
+        
+      case 3:
         return (
           <Box>
             <Alert severity="info" sx={{ mb: 3 }}>

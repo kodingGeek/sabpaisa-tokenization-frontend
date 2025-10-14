@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext } from 'react';
 import {
   Box,
   Drawer,
@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  MenuOpen as MenuOpenIcon,
   Notifications as NotificationsIcon,
   Dashboard,
   Token,
@@ -51,6 +52,13 @@ import {
   Refresh,
   CreditCard,
   Hub,
+  Assignment,
+  Receipt,
+  FactCheck,
+  History,
+  VerifiedUser,
+  CheckCircle,
+  Warning,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
@@ -63,6 +71,10 @@ import { useTranslation } from 'react-i18next';
 import { useTheme as useAppTheme } from '../contexts/ThemeContext';
 
 const drawerWidth = 260;
+const collapsedDrawerWidth = 60;
+
+// Context to detect nested DashboardLayout
+const DashboardLayoutContext = createContext(false);
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -89,9 +101,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const userRole = useAppSelector(selectUserRole);
   
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
   const [openMenuItems, setOpenMenuItems] = useState<{ [key: string]: boolean }>({});
+  
+  // Check if we're already inside a DashboardLayout
+  const isNested = React.useContext(DashboardLayoutContext);
+  
+  // If nested, just return children with proper padding
+  if (isNested) {
+    return <Box sx={{ p: 3 }}>{children}</Box>;
+  }
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -132,67 +153,85 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       icon: <Dashboard />,
     },
     {
-      title: t('navigation.tokenManagement'),
-      path: '/merchant/tokens',
+      title: 'Merchant Management',
+      path: '/merchants',
+      icon: <Business />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
+      children: [
+        { title: 'All Merchants', path: '/merchants', icon: <Business /> },
+        { title: 'My Profile', path: '/merchants/profile', icon: <Store /> },
+        { title: 'API Configuration', path: '/merchants/api-config', icon: <VpnKey /> },
+        { title: 'Platforms', path: '/merchants/platforms', icon: <BusinessCenter /> },
+        { title: 'KYC & Verification', path: '/merchants/kyc', icon: <VerifiedUser /> },
+        { title: 'Settings', path: '/merchants/settings', icon: <Settings /> },
+      ],
+    },
+    {
+      title: 'Tokens',
+      path: '/tokens',
       icon: <Token />,
       role: ['MERCHANT', 'SYSTEM_ADMIN'],
       children: [
-        { title: t('navigation.generateToken'), path: '/merchant/tokens/generate', icon: <VpnKey /> },
-        { title: t('navigation.activeTokens'), path: '/merchant/tokens/active', icon: <Token /> },
-        { title: t('navigation.tokenHistory'), path: '/merchant/tokens/history', icon: <Timeline /> },
-        { title: 'Unified Tokenization', path: '/merchant/tokens/unified', icon: <Security /> },
-        { title: 'Platform Tokens', path: '/merchant/tokens/platform', icon: <Business /> },
-        { title: 'Bulk Retokenization', path: '/merchant/tokens/bulk-retokenize', icon: <Refresh /> },
-        { title: 'Card Token View', path: '/merchant/tokens/card-view', icon: <CreditCard /> },
+        { title: 'Generate Token', path: '/tokens/generate', icon: <VpnKey /> },
+        { title: 'Active Tokens', path: '/tokens/active', icon: <Token /> },
+        { title: 'Token History', path: '/tokens/history', icon: <History /> },
+        { title: 'Unified Tokenization', path: '/tokens/unified', icon: <Hub /> },
+        { title: 'Platform Tokens', path: '/tokens/platform', icon: <Business /> },
+        { title: 'Bulk Operations', path: '/tokens/bulk', icon: <Refresh /> },
+        { title: 'Card View', path: '/tokens/card-view', icon: <CreditCard /> },
       ],
     },
     {
-      title: 'Unified Tokenization',
-      path: '/merchant/tokens/unified',
-      icon: <Hub />,
-      role: ['MERCHANT', 'SYSTEM_ADMIN'],
-    },
-    {
-      title: t('navigation.merchantManagement'),
-      path: '/merchant/management',
-      icon: <Store />,
-      role: ['MERCHANT', 'SYSTEM_ADMIN'],
-    },
-    {
-      title: 'Platforms',
-      path: '/merchant/platforms',
-      icon: <BusinessCenter />,
-      role: ['MERCHANT', 'SYSTEM_ADMIN'],
-    },
-    {
-      title: 'Billing & Monetization',
-      path: '/merchant/billing',
-      icon: <AttachMoney />,
-      role: ['MERCHANT', 'SYSTEM_ADMIN'],
-    },
-    {
-      title: t('navigation.securityCenter'),
+      title: 'Security',
       path: '/security',
       icon: <Security />,
-      role: ['SECURITY_OFFICER', 'SYSTEM_ADMIN'],
+      role: ['SECURITY_OFFICER', 'SYSTEM_ADMIN', 'MERCHANT'],
       children: [
-        { title: 'Threat Monitor', path: '/security/threats', icon: <Security /> },
+        { title: 'Security Dashboard', path: '/security/dashboard', icon: <Shield /> },
+        { title: 'Threat Monitor', path: '/security/threats', icon: <Warning /> },
+        { title: 'Fraud Detection', path: '/security/fraud', icon: <Security /> },
+        { title: 'Biometric Auth', path: '/security/biometric', icon: <Fingerprint /> },
+        { title: 'Quantum Security', path: '/security/quantum', icon: <Shield /> },
         { title: 'Incident Response', path: '/security/incidents', icon: <Lock /> },
-        { title: 'Security Analytics', path: '/security/analytics', icon: <Assessment /> },
-        { title: 'Fraud Detection', path: '/security/fraud-detection', icon: <Security /> },
-        { title: 'Quantum Security', path: '/security/quantum-security', icon: <Shield /> },
-        { title: 'Biometric Auth', path: '/security/biometric-auth', icon: <Fingerprint /> },
       ],
     },
     {
-      title: t('navigation.compliance'),
+      title: 'Compliance',
       path: '/compliance',
       icon: <Gavel />,
-      role: ['COMPLIANCE_OFFICER', 'SYSTEM_ADMIN'],
+      role: ['COMPLIANCE_OFFICER', 'SYSTEM_ADMIN', 'MERCHANT'],
       children: [
-        { title: 'RBI Reports', path: '/compliance/rbi', icon: <Assessment /> },
-        { title: 'PCI DSS Status', path: '/compliance/pci', icon: <Security /> },
-        { title: 'Audit Trails', path: '/compliance/audit', icon: <Timeline /> },
+        { title: 'Compliance Dashboard', path: '/compliance/dashboard', icon: <CheckCircle /> },
+        { title: 'PCI DSS Status', path: '/compliance/pci-dss', icon: <VerifiedUser /> },
+        { title: 'RBI Reports', path: '/compliance/rbi', icon: <Assignment /> },
+        { title: 'Regulatory Updates', path: '/compliance/regulations', icon: <Gavel /> },
+        { title: 'Certifications', path: '/compliance/certifications', icon: <FactCheck /> },
+      ],
+    },
+    {
+      title: 'Audit',
+      path: '/audit',
+      icon: <Assignment />,
+      role: ['COMPLIANCE_OFFICER', 'SYSTEM_ADMIN', 'MERCHANT'],
+      children: [
+        { title: 'Audit Dashboard', path: '/audit/dashboard', icon: <Assessment /> },
+        { title: 'Audit Trails', path: '/audit/trails', icon: <Timeline /> },
+        { title: 'Activity Logs', path: '/audit/logs', icon: <History /> },
+        { title: 'Reports', path: '/audit/reports', icon: <Assignment /> },
+        { title: 'Scheduled Audits', path: '/audit/scheduled', icon: <FactCheck /> },
+      ],
+    },
+    {
+      title: 'Billings',
+      path: '/billings',
+      icon: <Receipt />,
+      role: ['MERCHANT', 'SYSTEM_ADMIN'],
+      children: [
+        { title: 'Billing Dashboard', path: '/billings/dashboard', icon: <AttachMoney /> },
+        { title: 'Invoices', path: '/billings/invoices', icon: <Receipt /> },
+        { title: 'Payment History', path: '/billings/payments', icon: <History /> },
+        { title: 'Pricing Plans', path: '/billings/plans', icon: <BusinessCenter /> },
+        { title: 'Usage Analytics', path: '/billings/usage', icon: <Assessment /> },
       ],
     },
     {
@@ -202,7 +241,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       role: ['SYSTEM_ADMIN'],
       children: [
         { title: 'User Management', path: '/admin/users', icon: <People /> },
-        { title: 'Merchant Management', path: '/admin/merchants', icon: <Business /> },
         { title: 'System Config', path: '/admin/config', icon: <Settings /> },
         { title: 'Infrastructure', path: '/admin/infrastructure', icon: <Storage /> },
         { title: 'Cloud Replication', path: '/admin/cloud-replication', icon: <CloudSync /> },
@@ -221,33 +259,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const drawer = (
     <div>
-      <Toolbar sx={{ 
-        backgroundColor: 'primary.main', 
-        color: 'white',
-      }}>
-        <Lock sx={{ mr: 1 }} />
-        <Typography variant="h6" noWrap>
-          {t('app.title')}
-        </Typography>
-      </Toolbar>
-      <Divider />
       
-      <Box sx={{ p: 2, backgroundColor: 'background.paper' }}>
-        <Box display="flex" alignItems="center" mb={1}>
-          <Avatar sx={{ mr: 1, width: 32, height: 32 }}>
+      <Box sx={{ p: drawerOpen ? 2 : 1, backgroundColor: 'background.paper' }}>
+        <Box display="flex" alignItems="center" justifyContent={drawerOpen ? 'flex-start' : 'center'} mb={1}>
+          <Avatar sx={{ mr: drawerOpen ? 1 : 0, width: drawerOpen ? 32 : 28, height: drawerOpen ? 32 : 28 }}>
             {currentUser?.name.charAt(0)}
           </Avatar>
-          <Box>
-            <Typography variant="body2" fontWeight="bold">
-              {currentUser?.name}
-            </Typography>
-            <Chip 
-              label={userRole?.replace('_', ' ')} 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-            />
-          </Box>
+          {drawerOpen && (
+            <Box>
+              <Typography variant="body2" fontWeight="bold">
+                {currentUser?.name}
+              </Typography>
+              <Chip 
+                label={userRole?.replace('_', ' ')} 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+              />
+            </Box>
+          )}
         </Box>
       </Box>
       
@@ -268,8 +298,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 }}
                 selected={isPathActive(item.path)}
               >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.title} />
+                <ListItemIcon sx={{ minWidth: drawerOpen ? 56 : 'auto' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {drawerOpen && <ListItemText primary={item.title} />}
                 {item.children && (
                   openMenuItems[item.title] ? <ExpandLess /> : <ExpandMore />
                 )}
@@ -289,8 +321,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                       }}
                       selected={isPathActive(child.path)}
                     >
-                      <ListItemIcon>{child.icon}</ListItemIcon>
-                      <ListItemText primary={child.title} />
+                      <ListItemIcon sx={{ minWidth: drawerOpen ? 56 : 'auto' }}>
+                        {child.icon}
+                      </ListItemIcon>
+                      {drawerOpen && <ListItemText primary={child.title} />}
                     </ListItemButton>
                   ))}
                 </List>
@@ -309,35 +343,30 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* Main content first */}
-      <Box
-        component="main"
+    <DashboardLayoutContext.Provider value={true}>
+      <Box sx={{ display: 'flex' }}>
+      {/* AppBar */}
+      <AppBar
+        position="fixed"
         sx={{
-          flexGrow: 1,
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
-        {/* AppBar */}
-        <AppBar
-          position="fixed"
-          sx={{
-            width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-            left: 0,
-          }}
-        >
           <Toolbar>
             <IconButton
               color="inherit"
-              aria-label="open drawer"
+              aria-label="toggle drawer"
               edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { md: 'none' } }}
+              onClick={() => isMobile ? handleDrawerToggle() : setDrawerOpen(!drawerOpen)}
+              sx={{ mr: 2 }}
             >
-              <MenuIcon />
+              {drawerOpen ? <MenuOpenIcon /> : <MenuIcon />}
             </IconButton>
+            
+            <Lock sx={{ mr: 1 }} />
+            <Typography variant="h6" noWrap component="div" sx={{ mr: 4 }}>
+              {t('app.title')}
+            </Typography>
             
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               {location.pathname === '/dashboard' ? t('navigation.dashboard') : 
@@ -376,34 +405,65 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </Toolbar>
         </AppBar>
         
-        {/* Content */}
-        <Box sx={{ p: 3, pt: 10 }}>
+      
+      {/* Left Drawer */}
+      <Drawer
+        variant={isMobile ? 'temporary' : 'permanent'}
+        anchor="left"
+        open={isMobile ? mobileOpen : true}
+        onClose={handleDrawerToggle}
+        sx={{
+          width: drawerOpen ? drawerWidth : collapsedDrawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerOpen ? drawerWidth : collapsedDrawerWidth,
+            boxSizing: 'border-box',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            ...(isMobile ? {} : {
+              marginTop: '64px', // Height of AppBar
+              height: 'calc(100% - 64px)',
+            }),
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+        }}
+      >
+        <Toolbar /> {/* This adds space for the fixed AppBar */}
+        <Box sx={{ flex: 1 }}>
           {children}
         </Box>
-      </Box>
-      
-      {/* Right Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-      >
-        <Drawer
-          variant={isMobile ? 'temporary' : 'permanent'}
-          anchor="right"
-          open={isMobile ? mobileOpen : true}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+        
+        {/* Footer */}
+        <Box
+          component="footer"
           sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
+            py: 3,
+            px: 2,
+            mt: 'auto',
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'light' ? theme.palette.grey[200] : theme.palette.grey[800],
+            borderTop: '1px solid',
+            borderColor: 'divider',
           }}
         >
-          {drawer}
-        </Drawer>
+          <Typography variant="body2" color="text.secondary" align="center">
+            {'© '}{new Date().getFullYear()} SabPaisa Tokenization Platform. All rights reserved.
+          </Typography>
+        </Box>
       </Box>
       
       {/* Notification Menu */}
@@ -449,6 +509,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </MenuItem>
       </Menu>
     </Box>
+    </DashboardLayoutContext.Provider>
   );
 };
 

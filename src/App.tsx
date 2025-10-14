@@ -20,43 +20,60 @@ import { AppThemeProvider } from './contexts/ThemeContext';
 const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const MerchantPortal = lazy(() => import('./pages/MerchantPortal'));
-const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
-const ComplianceDashboard = lazy(() => import('./pages/ComplianceDashboard'));
-const AdminConsole = lazy(() => import('./pages/AdminConsole'));
-const TokenManagement = lazy(() => import('./pages/TokenManagement'));
-const AuditTrails = lazy(() => import('./pages/AuditTrails'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const DashboardLayoutWrapper = lazy(() => import('./components/common/DashboardLayoutWrapper'));
 
-// Merchant pages
+// Merchant Management pages
+const MerchantPortal = lazy(() => import('./pages/MerchantPortal'));
+const MerchantList = lazy(() => import('./pages/merchant/MerchantList'));
+const MerchantProfile = lazy(() => import('./pages/merchant/MerchantProfile'));
+const APIConfiguration = lazy(() => import('./pages/merchant/APIConfiguration'));
+const PlatformManagement = lazy(() => import('./pages/platforms/PlatformManagement'));
+const KYCVerification = lazy(() => import('./pages/merchant/KYCVerification'));
+const MerchantSettings = lazy(() => import('./pages/merchant/MerchantSettings'));
+
+// Token Management pages
+const TokenManagement = lazy(() => import('./pages/TokenManagementV2'));
 const TokenGenerate = lazy(() => import('./pages/merchant/TokenGenerate'));
 const ActiveTokens = lazy(() => import('./pages/merchant/ActiveTokens'));
 const TokenHistory = lazy(() => import('./pages/merchant/TokenHistory'));
+const UnifiedTokenization = lazy(() => import('./pages/tokenization/UnifiedTokenization'));
+const PlatformTokenization = lazy(() => import('./pages/tokenization/PlatformTokenization'));
+const BulkOperations = lazy(() => import('./pages/tokenization/BulkRetokenization'));
+const CardTokenView = lazy(() => import('./pages/tokenization/CardTokenView'));
 
 // Security pages
+const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const ThreatMonitor = lazy(() => import('./pages/security/ThreatMonitor'));
-const IncidentResponse = lazy(() => import('./pages/security/IncidentResponse'));
-const SecurityAnalytics = lazy(() => import('./pages/security/SecurityAnalytics'));
 const FraudDetection = lazy(() => import('./pages/security/FraudDetection'));
-const QuantumSecurity = lazy(() => import('./pages/security/QuantumSecurity'));
 const BiometricAuth = lazy(() => import('./pages/security/BiometricAuth'));
+const QuantumSecurity = lazy(() => import('./pages/security/QuantumSecurity'));
+const IncidentResponse = lazy(() => import('./pages/security/IncidentResponse'));
 
 // Compliance pages
-const RBIReports = lazy(() => import('./pages/compliance/RBIReports'));
+const ComplianceDashboard = lazy(() => import('./pages/ComplianceDashboard'));
 const PCIDSSStatus = lazy(() => import('./pages/compliance/PCIDSSStatus'));
-const ComplianceAudit = lazy(() => import('./pages/compliance/ComplianceAudit'));
+const RBIReports = lazy(() => import('./pages/compliance/RBIReports'));
+const RegulatoryUpdates = lazy(() => import('./pages/compliance/RegulatoryUpdates'));
+const Certifications = lazy(() => import('./pages/compliance/Certifications'));
+
+// Audit pages
+const AuditDashboard = lazy(() => import('./pages/audit/AuditDashboard'));
+const AuditTrails = lazy(() => import('./pages/AuditTrails'));
+const ActivityLogs = lazy(() => import('./pages/audit/ActivityLogs'));
+const AuditReports = lazy(() => import('./pages/audit/AuditReports'));
+const ScheduledAudits = lazy(() => import('./pages/audit/ScheduledAudits'));
+
+// Billing pages
+const BillingDashboard = lazy(() => import('./pages/billing/BillingDashboard'));
+const Invoices = lazy(() => import('./pages/billing/Invoices'));
+const PaymentHistory = lazy(() => import('./pages/billing/PaymentHistory'));
+const PricingPlans = lazy(() => import('./pages/billing/PricingPlans'));
+const UsageAnalytics = lazy(() => import('./pages/billing/UsageAnalytics'));
 
 // Admin pages
+const AdminConsole = lazy(() => import('./pages/AdminConsole'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
-const MerchantManagement = lazy(() => import('./pages/admin/MerchantManagement'));
-
-// Enterprise pages
-const PlatformTokenization = lazy(() => import('./pages/tokenization/PlatformTokenization'));
-const UnifiedTokenization = lazy(() => import('./pages/tokenization/UnifiedTokenization'));
-const BulkRetokenization = lazy(() => import('./pages/tokenization/BulkRetokenization'));
-const TokenMonetization = lazy(() => import('./pages/billing/TokenMonetization'));
-const PlatformManagement = lazy(() => import('./pages/platforms/PlatformManagement'));
-const CardTokenView = lazy(() => import('./pages/tokenization/CardTokenView'));
 const SystemConfig = lazy(() => import('./pages/admin/SystemConfig'));
 const Infrastructure = lazy(() => import('./pages/admin/Infrastructure'));
 const CloudReplication = lazy(() => import('./pages/admin/CloudReplication'));
@@ -127,60 +144,89 @@ const App: React.FC = () => {
                   <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Login />} />
                   
-                  {/* Protected Routes */}
+                  {/* Protected Routes with Layout */}
                   <Route element={<PrivateRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/integration-test" element={<IntegrationTest />} />
-                    <Route path="/simple-tokenize" element={<SimpleTokenize />} />
+                    <Route element={<DashboardLayoutWrapper />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/integration-test" element={<IntegrationTest />} />
+                      <Route path="/simple-tokenize" element={<SimpleTokenize />} />
                     
-                    {/* Merchant Portal Routes */}
-                    <Route path="/merchant">
-                      <Route index element={<MerchantPortal />} />
-                      <Route path="management" element={<MerchantManagement />} />
-                      <Route path="tokens" element={<TokenManagement />} />
-                      <Route path="tokens/generate" element={<TokenGenerate />} />
-                      <Route path="tokens/active" element={<ActiveTokens />} />
-                      <Route path="tokens/history" element={<TokenHistory />} />
-                      <Route path="tokens/platform" element={<PlatformTokenization />} />
-                      <Route path="tokens/unified" element={<UnifiedTokenization />} />
-                      <Route path="tokens/bulk-retokenize" element={<BulkRetokenization />} />
-                      <Route path="tokens/card-view" element={<CardTokenView />} />
+                    {/* Merchant Management Routes */}
+                    <Route path="/merchants">
+                      <Route index element={<MerchantList />} />
+                      <Route path="portal" element={<MerchantPortal />} />
+                      <Route path="profile" element={<MerchantProfile />} />
+                      <Route path="api-config" element={<APIConfiguration />} />
                       <Route path="platforms" element={<PlatformManagement />} />
-                      <Route path="billing" element={<TokenMonetization />} />
-                      <Route path="audit" element={<AuditTrails />} />
+                      <Route path="kyc" element={<KYCVerification />} />
+                      <Route path="settings" element={<MerchantSettings />} />
                     </Route>
                     
-                    {/* Security Officer Routes */}
-                    <Route path="/security" element={<PrivateRoute requiredRole="SECURITY_OFFICER" />}>
+                    {/* Token Management Routes */}
+                    <Route path="/tokens">
+                      <Route index element={<TokenManagement />} />
+                      <Route path="generate" element={<TokenGenerate />} />
+                      <Route path="active" element={<ActiveTokens />} />
+                      <Route path="history" element={<TokenHistory />} />
+                      <Route path="unified" element={<UnifiedTokenization />} />
+                      <Route path="platform" element={<PlatformTokenization />} />
+                      <Route path="bulk" element={<BulkOperations />} />
+                      <Route path="card-view" element={<CardTokenView />} />
+                    </Route>
+                    
+                    {/* Security Routes */}
+                    <Route path="/security">
                       <Route index element={<SecurityDashboard />} />
+                      <Route path="dashboard" element={<SecurityDashboard />} />
                       <Route path="threats" element={<ThreatMonitor />} />
+                      <Route path="fraud" element={<FraudDetection />} />
+                      <Route path="biometric" element={<BiometricAuth />} />
+                      <Route path="quantum" element={<QuantumSecurity />} />
                       <Route path="incidents" element={<IncidentResponse />} />
-                      <Route path="analytics" element={<SecurityAnalytics />} />
-                      <Route path="fraud-detection" element={<FraudDetection />} />
-                      <Route path="quantum-security" element={<QuantumSecurity />} />
-                      <Route path="biometric-auth" element={<BiometricAuth />} />
                     </Route>
                     
-                    {/* Compliance Team Routes */}
-                    <Route path="/compliance" element={<PrivateRoute requiredRole="COMPLIANCE_OFFICER" />}>
+                    {/* Compliance Routes */}
+                    <Route path="/compliance">
                       <Route index element={<ComplianceDashboard />} />
+                      <Route path="dashboard" element={<ComplianceDashboard />} />
+                      <Route path="pci-dss" element={<PCIDSSStatus />} />
                       <Route path="rbi" element={<RBIReports />} />
-                      <Route path="pci" element={<PCIDSSStatus />} />
-                      <Route path="audit" element={<ComplianceAudit />} />
+                      <Route path="regulations" element={<RegulatoryUpdates />} />
+                      <Route path="certifications" element={<Certifications />} />
                     </Route>
                     
-                    {/* System Admin Routes */}
+                    {/* Audit Routes */}
+                    <Route path="/audit">
+                      <Route index element={<AuditDashboard />} />
+                      <Route path="dashboard" element={<AuditDashboard />} />
+                      <Route path="trails" element={<AuditTrails />} />
+                      <Route path="logs" element={<ActivityLogs />} />
+                      <Route path="reports" element={<AuditReports />} />
+                      <Route path="scheduled" element={<ScheduledAudits />} />
+                    </Route>
+                    
+                    {/* Billing Routes */}
+                    <Route path="/billings">
+                      <Route index element={<BillingDashboard />} />
+                      <Route path="dashboard" element={<BillingDashboard />} />
+                      <Route path="invoices" element={<Invoices />} />
+                      <Route path="payments" element={<PaymentHistory />} />
+                      <Route path="plans" element={<PricingPlans />} />
+                      <Route path="usage" element={<UsageAnalytics />} />
+                    </Route>
+                    
+                    {/* Admin Routes */}
                     <Route path="/admin" element={<PrivateRoute requiredRole="SYSTEM_ADMIN" />}>
                       <Route index element={<AdminConsole />} />
                       <Route path="users" element={<UserManagement />} />
-                      <Route path="merchants" element={<MerchantManagement />} />
                       <Route path="config" element={<SystemConfig />} />
                       <Route path="infrastructure" element={<Infrastructure />} />
                       <Route path="cloud-replication" element={<CloudReplication />} />
                     </Route>
-                  </Route>
+                    </Route> {/* End DashboardLayoutWrapper */}
+                  </Route> {/* End PrivateRoute */}
                   
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />

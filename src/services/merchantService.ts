@@ -185,6 +185,21 @@ class MerchantService {
       throw error;
     }
   }
+
+  // Alias for getMerchant to match the component usage
+  async getMerchantById(merchantId: string): Promise<MerchantResponse> {
+    return this.getMerchant(merchantId);
+  }
+
+  async getMerchantStats(merchantId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/merchants/${merchantId}/stats`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching merchant stats:', error);
+      throw error;
+    }
+  }
 }
 
 export default new MerchantService();

@@ -27,7 +27,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../hooks/redux';
 import { selectCurrentUser, selectUserRole } from '../store/slices/authSlice';
-import DashboardLayout from '../layouts/DashboardLayout';
 import StatCard from '../components/dashboard/StatCard';
 import ActivityChart from '../components/dashboard/ActivityChart';
 import RecentTokens from '../components/dashboard/RecentTokens';
@@ -103,10 +102,10 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
+    <>
       {loading && <LinearProgress />}
       
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ p: 3 }}>
         {/* Welcome Section */}
         <Box mb={4}>
           <Typography variant="h4" gutterBottom>
@@ -256,8 +255,8 @@ const Dashboard: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
-      </Container>
-    </DashboardLayout>
+      </Box>
+    </>
   );
 };
 
