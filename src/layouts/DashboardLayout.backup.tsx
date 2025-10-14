@@ -489,10 +489,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           }),
           minHeight: '100vh',
           backgroundColor: 'background.default',
-          transition: theme.transitions.create(['margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
         }}
       >
         <Toolbar />
