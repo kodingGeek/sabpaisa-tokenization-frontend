@@ -3,20 +3,11 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 
 interface DashboardWrapperProps {
   children: React.ReactNode;
-  currentTheme?: string;
-  onThemeChange?: (themeId: string) => void;
 }
 
-const DashboardWrapper: React.FC<DashboardWrapperProps> = ({ 
-  children, 
-  currentTheme, 
-  onThemeChange 
-}) => {
+const DashboardWrapper: React.FC<DashboardWrapperProps> = ({ children }) => {
   return (
-    <DashboardLayout 
-      currentTheme={currentTheme} 
-      onThemeChange={onThemeChange}
-    >
+    <DashboardLayout>
       {children}
     </DashboardLayout>
   );
