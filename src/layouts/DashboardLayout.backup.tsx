@@ -460,7 +460,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         sx={{
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
             borderLeft: 1,
             borderColor: 'divider',
             boxShadow: theme.shadows[3],
