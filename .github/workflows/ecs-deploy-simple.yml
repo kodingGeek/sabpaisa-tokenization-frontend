@@ -1,0 +1,187 @@
+name: Deploy Frontend to ECS (Simple)
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: sabpaisa-tokenization-frontend
+  ECS_CLUSTER: sabpaisa-tokenization-cluster
+  ECS_SERVICE: sabpaisa-tokenization-frontend
+  CONTAINER_NAME: frontend
+  TASK_FAMILY: sabpaisa-tokenization-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Setup Variables
+      id: vars
+      run: |
+        # Get basic info
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        
+        echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+        echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+        
+        # Get ECR URI
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $ECR_REPOSITORY --query 'repositories[0].repositoryUri' --output text)
+        echo "repository_uri=$REPOSITORY_URI" >> $GITHUB_OUTPUT
+        
+        # Get ALB DNS
+        ALB_DNS=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null || echo "")
+        ALB_ARN=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
+        
+        echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
+        echo "alb_arn=$ALB_ARN" >> $GITHUB_OUTPUT
+        
+        # Get VPC
+        VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query 'Vpcs[0].VpcId' --output text)
+        echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+        
+        # Get subnets
+        SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[*].SubnetId' --output text | tr '\t' ',' | cut -d',' -f1,2)
+        echo "subnet_ids=$SUBNET_IDS" >> $GITHUB_OUTPUT
+        
+    - name: Build and Push Image
+      id: build
+      run: |
+        IMAGE_TAG="${{ steps.vars.outputs.timestamp }}"
+        IMAGE_URI="${{ steps.vars.outputs.repository_uri }}:$IMAGE_TAG"
+        
+        # Build
+        docker build -t $IMAGE_URI .
+        
+        # Push
+        docker push $IMAGE_URI
+        docker tag $IMAGE_URI ${{ steps.vars.outputs.repository_uri }}:latest
+        docker push ${{ steps.vars.outputs.repository_uri }}:latest
+        
+        echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+        
+    - name: Create Resources and Deploy
+      run: |
+        set -e
+        
+        # Variables
+        UNIQUE_ID="${{ steps.vars.outputs.timestamp }}"
+        
+        # 1. Create Security Group
+        echo "Creating security group..."
+        SG_ID=$(aws ec2 create-security-group \
+          --group-name "frontend-sg-$UNIQUE_ID" \
+          --description "Frontend SG $UNIQUE_ID" \
+          --vpc-id ${{ steps.vars.outputs.vpc_id }} \
+          --query 'GroupId' \
+          --output text)
+        
+        aws ec2 authorize-security-group-ingress \
+          --group-id $SG_ID \
+          --protocol tcp \
+          --port 80 \
+          --cidr 0.0.0.0/0
+        
+        # 2. Create Target Group (without matcher parameter)
+        echo "Creating target group..."
+        TG_ARN=$(aws elbv2 create-target-group \
+          --name "fe-tg-${UNIQUE_ID: -8}" \
+          --protocol HTTP \
+          --port 80 \
+          --vpc-id ${{ steps.vars.outputs.vpc_id }} \
+          --target-type ip \
+          --health-check-path / \
+          --query 'TargetGroups[0].TargetGroupArn' \
+          --output text)
+        
+        # 3. Configure ALB
+        if [ ! -z "${{ steps.vars.outputs.alb_arn }}" ]; then
+          LISTENER_ARN=$(aws elbv2 describe-listeners \
+            --load-balancer-arn ${{ steps.vars.outputs.alb_arn }} \
+            --query 'Listeners[0].ListenerArn' \
+            --output text)
+          
+          aws elbv2 modify-listener \
+            --listener-arn $LISTENER_ARN \
+            --default-actions Type=forward,TargetGroupArn=$TG_ARN || true
+        fi
+        
+        # 4. Create Task Definition
+        aws logs create-log-group --log-group-name /ecs/$ECS_SERVICE || true
+        
+        cat > /tmp/task-def.json <<EOF
+        {
+          "family": "$TASK_FAMILY",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "512",
+          "memory": "1024",
+          "executionRoleArn": "arn:aws:iam::${{ steps.vars.outputs.account_id }}:role/ecsTaskExecutionRole",
+          "containerDefinitions": [{
+            "name": "$CONTAINER_NAME",
+            "image": "${{ steps.build.outputs.image_uri }}",
+            "portMappings": [{"containerPort": 80, "protocol": "tcp"}],
+            "essential": true,
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/ecs/$ECS_SERVICE",
+                "awslogs-region": "$AWS_REGION",
+                "awslogs-stream-prefix": "ecs"
+              }
+            }
+          }]
+        }
+        EOF
+        
+        aws ecs register-task-definition --cli-input-json file:///tmp/task-def.json
+        
+        # 5. Create Service
+        echo "Creating ECS service..."
+        
+        # Delete old service if exists
+        aws ecs delete-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force || true
+        sleep 10
+        
+        # Create new service
+        SUBNET_LIST=$(echo "${{ steps.vars.outputs.subnet_ids }}" | tr ',' ' ')
+        
+        aws ecs create-service \
+          --cluster $ECS_CLUSTER \
+          --service-name $ECS_SERVICE \
+          --task-definition $TASK_FAMILY \
+          --desired-count 1 \
+          --launch-type FARGATE \
+          --network-configuration "{
+            \"awsvpcConfiguration\": {
+              \"subnets\": [$(echo $SUBNET_LIST | awk '{printf "\"%s\",\"%s\"", $1, $2}')],
+              \"securityGroups\": [\"$SG_ID\"],
+              \"assignPublicIp\": \"ENABLED\"
+            }
+          }" \
+          --load-balancers "targetGroupArn=$TG_ARN,containerName=$CONTAINER_NAME,containerPort=80"
+        
+    - name: Summary
+      if: always()
+      run: |
+        echo "🎉 Deployment Complete!"
+        echo "====================="
+        echo "Frontend URL: http://${{ steps.vars.outputs.alb_dns }}"
+        echo "Image: ${{ steps.build.outputs.image_uri }}"
+        echo ""
+        echo "Monitor: https://console.aws.amazon.com/ecs/home?region=$AWS_REGION#/clusters/$ECS_CLUSTER/services"
