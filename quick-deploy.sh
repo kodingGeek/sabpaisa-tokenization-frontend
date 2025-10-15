@@ -55,9 +55,23 @@ TG_ARN=$(aws elbv2 create-target-group \
 
 # Get ALB and update listener
 ALB_ARN=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)
+ALB_DNS=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null)
+
 if [ ! -z "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
   LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $ALB_ARN --query 'Listeners[0].ListenerArn' --output text)
-  aws elbv2 modify-listener --listener-arn $LISTENER_ARN --default-actions Type=forward,TargetGroupArn=$TG_ARN
+  if [ ! -z "$LISTENER_ARN" ] && [ "$LISTENER_ARN" != "None" ]; then
+    # Try to create a rule first
+    PRIORITY=$((100 + RANDOM % 900))
+    aws elbv2 create-rule \
+      --listener-arn $LISTENER_ARN \
+      --priority $PRIORITY \
+      --conditions Field=path-pattern,Values="/*" \
+      --actions Type=forward,TargetGroupArn=$TG_ARN 2>/dev/null || \
+    # If that fails, modify the default action
+    aws elbv2 modify-listener \
+      --listener-arn $LISTENER_ARN \
+      --default-actions Type=forward,TargetGroupArn=$TG_ARN
+  fi
 fi
 
 # Delete old service

@@ -110,15 +110,27 @@ jobs:
           --output text)
         
         # 3. Configure ALB
-        if [ ! -z "${{ steps.vars.outputs.alb_arn }}" ]; then
+        if [ ! -z "${{ steps.vars.outputs.alb_arn }}" ] && [ "${{ steps.vars.outputs.alb_arn }}" != "None" ]; then
+          echo "Configuring ALB listener..."
           LISTENER_ARN=$(aws elbv2 describe-listeners \
             --load-balancer-arn ${{ steps.vars.outputs.alb_arn }} \
             --query 'Listeners[0].ListenerArn' \
             --output text)
           
-          aws elbv2 modify-listener \
-            --listener-arn $LISTENER_ARN \
-            --default-actions Type=forward,TargetGroupArn=$TG_ARN || true
+          if [ ! -z "$LISTENER_ARN" ] && [ "$LISTENER_ARN" != "None" ]; then
+            # Add a rule to the listener instead of modifying default action
+            aws elbv2 create-rule \
+              --listener-arn $LISTENER_ARN \
+              --priority $((100 + RANDOM % 900)) \
+              --conditions Field=path-pattern,Values="/*" \
+              --actions Type=forward,TargetGroupArn=$TG_ARN || \
+            # If rule creation fails, update the default action
+            aws elbv2 modify-listener \
+              --listener-arn $LISTENER_ARN \
+              --default-actions Type=forward,TargetGroupArn=$TG_ARN || true
+          fi
+        else
+          echo "Warning: No ALB found. Service will be created but not accessible via load balancer."
         fi
         
         # 4. Create Task Definition
@@ -161,20 +173,39 @@ jobs:
         # Create new service
         SUBNET_LIST=$(echo "${{ steps.vars.outputs.subnet_ids }}" | tr ',' ' ')
         
-        aws ecs create-service \
-          --cluster $ECS_CLUSTER \
-          --service-name $ECS_SERVICE \
-          --task-definition $TASK_FAMILY \
-          --desired-count 1 \
-          --launch-type FARGATE \
-          --network-configuration "{
-            \"awsvpcConfiguration\": {
-              \"subnets\": [$(echo $SUBNET_LIST | awk '{printf "\"%s\",\"%s\"", $1, $2}')],
-              \"securityGroups\": [\"$SG_ID\"],
-              \"assignPublicIp\": \"ENABLED\"
-            }
-          }" \
-          --load-balancers "targetGroupArn=$TG_ARN,containerName=$CONTAINER_NAME,containerPort=80"
+        # Check if we have a valid target group and ALB
+        if [ ! -z "$TG_ARN" ] && [ ! -z "${{ steps.vars.outputs.alb_arn }}" ] && [ "${{ steps.vars.outputs.alb_arn }}" != "None" ]; then
+          echo "Creating service with load balancer..."
+          aws ecs create-service \
+            --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE \
+            --task-definition $TASK_FAMILY \
+            --desired-count 1 \
+            --launch-type FARGATE \
+            --network-configuration "{
+              \"awsvpcConfiguration\": {
+                \"subnets\": [$(echo $SUBNET_LIST | awk '{printf "\"%s\",\"%s\"", $1, $2}')],
+                \"securityGroups\": [\"$SG_ID\"],
+                \"assignPublicIp\": \"ENABLED\"
+              }
+            }" \
+            --load-balancers "targetGroupArn=$TG_ARN,containerName=$CONTAINER_NAME,containerPort=80"
+        else
+          echo "Creating service without load balancer..."
+          aws ecs create-service \
+            --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE \
+            --task-definition $TASK_FAMILY \
+            --desired-count 1 \
+            --launch-type FARGATE \
+            --network-configuration "{
+              \"awsvpcConfiguration\": {
+                \"subnets\": [$(echo $SUBNET_LIST | awk '{printf "\"%s\",\"%s\"", $1, $2}')],
+                \"securityGroups\": [\"$SG_ID\"],
+                \"assignPublicIp\": \"ENABLED\"
+              }
+            }"
+        fi
         
     - name: Summary
       if: always()
