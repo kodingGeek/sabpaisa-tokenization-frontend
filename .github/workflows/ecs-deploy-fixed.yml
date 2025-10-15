@@ -1,0 +1,269 @@
+name: Deploy Frontend to ECS (Fixed)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      image_tag:
+        description: 'Docker Image Tag'
+        required: false
+        default: 'latest'
+        type: string
+      backend_url:
+        description: 'Backend API URL'
+        required: false
+        default: 'auto-detect'
+        type: string
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: sabpaisa-tokenization-frontend
+  ECS_CLUSTER: sabpaisa-tokenization-cluster
+  ECS_SERVICE: sabpaisa-tokenization-frontend
+  CONTAINER_NAME: frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Create ECR repository if needed
+      run: |
+        aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
+        aws ecr create-repository --repository-name $ECR_REPOSITORY --image-scanning-configuration scanOnPush=true
+      
+    - name: Get repository URI and ALB DNS
+      id: aws-resources
+      run: |
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $ECR_REPOSITORY --query 'repositories[0].repositoryUri' --output text)
+        echo "repository_uri=$REPOSITORY_URI" >> $GITHUB_OUTPUT
+        
+        # Get ALB DNS name for backend URL
+        ALB_DNS=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null || echo "")
+        echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
+        
+        # Set backend URL
+        if [ "${{ github.event.inputs.backend_url }}" = "auto-detect" ]; then
+          if [ ! -z "$ALB_DNS" ]; then
+            BACKEND_URL="http://$ALB_DNS/tokenization-backend"
+          else
+            BACKEND_URL="http://localhost:8080/tokenization-backend"
+          fi
+        else
+          BACKEND_URL="${{ github.event.inputs.backend_url }}"
+        fi
+        echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        
+    - name: Build Docker image
+      id: build-image
+      run: |
+        IMAGE_TAG=${{ github.event.inputs.image_tag }}
+        if [ "$IMAGE_TAG" = "latest" ]; then
+          IMAGE_TAG="${GITHUB_SHA:0:8}"
+        fi
+        
+        IMAGE_URI="${{ steps.aws-resources.outputs.repository_uri }}:$IMAGE_TAG"
+        
+        echo "Building Docker image with backend URL: ${{ steps.aws-resources.outputs.backend_url }}"
+        
+        docker build \
+          --build-arg REACT_APP_API_URL="${{ steps.aws-resources.outputs.backend_url }}" \
+          -t $IMAGE_URI .
+        
+        echo "Pushing Docker image to ECR..."
+        docker push $IMAGE_URI
+        
+        # Also tag as latest
+        docker tag $IMAGE_URI ${{ steps.aws-resources.outputs.repository_uri }}:latest
+        docker push ${{ steps.aws-resources.outputs.repository_uri }}:latest
+        
+        echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        
+    - name: Create or update ECS task definition
+      id: task-def
+      run: |
+        # Get AWS account ID
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        
+        # Check if task definition exists
+        if aws ecs describe-task-definition --task-definition $ECS_SERVICE 2>/dev/null; then
+          echo "Updating existing task definition..."
+          # Get current task definition and update it
+          TASK_DEFINITION=$(aws ecs describe-task-definition \
+            --task-definition $ECS_SERVICE \
+            --query 'taskDefinition' \
+            --output json | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)')
+        else
+          echo "Creating new task definition..."
+          # Create CloudWatch log group if needed
+          aws logs create-log-group --log-group-name /ecs/$ECS_SERVICE || true
+          
+          # Create new task definition
+          TASK_DEFINITION=$(cat <<EOF
+        {
+          "family": "$ECS_SERVICE",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "512",
+          "memory": "1024",
+          "executionRoleArn": "arn:aws:iam::$ACCOUNT_ID:role/ecsTaskExecutionRole",
+          "containerDefinitions": []
+        }
+        EOF
+          )
+        fi
+        
+        # Update the task definition with new image and environment
+        TASK_DEFINITION=$(echo $TASK_DEFINITION | jq \
+          --arg IMAGE_URI "${{ steps.build-image.outputs.image_uri }}" \
+          --arg BACKEND_URL "${{ steps.aws-resources.outputs.backend_url }}" \
+          --arg CONTAINER_NAME "$CONTAINER_NAME" \
+          --arg LOG_GROUP "/ecs/$ECS_SERVICE" \
+          --arg AWS_REGION "$AWS_REGION" \
+          '.containerDefinitions = [{
+            "name": $CONTAINER_NAME,
+            "image": $IMAGE_URI,
+            "portMappings": [{
+              "containerPort": 80,
+              "protocol": "tcp"
+            }],
+            "essential": true,
+            "environment": [{
+              "name": "REACT_APP_API_URL",
+              "value": $BACKEND_URL
+            }],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": $LOG_GROUP,
+                "awslogs-region": $AWS_REGION,
+                "awslogs-stream-prefix": "ecs"
+              }
+            },
+            "healthCheck": {
+              "command": ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"],
+              "interval": 30,
+              "timeout": 5,
+              "retries": 3,
+              "startPeriod": 60
+            }
+          }]')
+        
+        echo "$TASK_DEFINITION" > task-definition.json
+        echo "Task definition created:"
+        cat task-definition.json
+        
+    - name: Deploy to Amazon ECS
+      id: deploy-ecs
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: task-definition.json
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+        wait-for-minutes: 10
+      continue-on-error: true
+        
+    - name: Create ECS service if deployment failed
+      if: steps.deploy-ecs.outcome == 'failure'
+      run: |
+        echo "Service deployment failed. The service might not exist."
+        echo "Please create the ECS service manually with:"
+        echo ""
+        echo "1. Ensure ECS cluster '$ECS_CLUSTER' exists"
+        echo "2. Create target group in ALB"
+        echo "3. Get subnet IDs and security group IDs"
+        echo "4. Run:"
+        echo ""
+        echo "aws ecs create-service \\"
+        echo "  --cluster $ECS_CLUSTER \\"
+        echo "  --service-name $ECS_SERVICE \\"
+        echo "  --task-definition $ECS_SERVICE \\"
+        echo "  --desired-count 1 \\"
+        echo "  --launch-type FARGATE \\"
+        echo "  --network-configuration \"awsvpcConfiguration={subnets=[subnet-xxx,subnet-yyy],securityGroups=[sg-xxx],assignPublicIp=ENABLED}\" \\"
+        echo "  --load-balancers \"targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:ACCOUNT_ID:targetgroup/xxx,containerName=$CONTAINER_NAME,containerPort=80\""
+        
+    - name: Verify deployment
+      if: steps.deploy-ecs.outcome == 'success'
+      run: |
+        echo "Deployment completed successfully!"
+        
+        # Get service details
+        SERVICE_INFO=$(aws ecs describe-services \
+          --cluster $ECS_CLUSTER \
+          --services $ECS_SERVICE \
+          --query 'services[0]' 2>/dev/null || echo "{}")
+        
+        if [ "$SERVICE_INFO" != "{}" ]; then
+          DESIRED_COUNT=$(echo $SERVICE_INFO | jq '.desiredCount // 0')
+          RUNNING_COUNT=$(echo $SERVICE_INFO | jq '.runningCount // 0')
+          PENDING_COUNT=$(echo $SERVICE_INFO | jq '.pendingCount // 0')
+          
+          echo "Service Status:"
+          echo "- Desired tasks: $DESIRED_COUNT"
+          echo "- Running tasks: $RUNNING_COUNT"
+          echo "- Pending tasks: $PENDING_COUNT"
+        fi
+        
+        # Get load balancer DNS
+        ALB_DNS="${{ steps.aws-resources.outputs.alb_dns }}"
+        
+        if [ ! -z "$ALB_DNS" ]; then
+          echo "Frontend URL: http://$ALB_DNS"
+          echo "Backend API URL: ${{ steps.aws-resources.outputs.backend_url }}"
+          
+          # Verify health check
+          echo "Waiting for health check..."
+          sleep 30
+          
+          if curl -f -s "http://$ALB_DNS" > /dev/null; then
+            echo "✅ Frontend is accessible!"
+          else
+            echo "⚠️ Frontend health check failed - application may still be starting"
+          fi
+        fi
+        
+    - name: Output deployment info
+      if: always()
+      run: |
+        echo "========================================="
+        echo "Deployment Summary:"
+        echo "========================================="
+        echo "Docker Image: ${{ steps.build-image.outputs.image_uri }}"
+        echo "Image Tag: ${{ steps.build-image.outputs.image_tag }}"
+        echo "Backend URL: ${{ steps.aws-resources.outputs.backend_url }}"
+        if [ ! -z "${{ steps.aws-resources.outputs.alb_dns }}" ]; then
+          echo "Frontend URL: http://${{ steps.aws-resources.outputs.alb_dns }}"
+        fi
+        echo "========================================="
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        # Clean up task definition file
+        rm -f task-definition.json
