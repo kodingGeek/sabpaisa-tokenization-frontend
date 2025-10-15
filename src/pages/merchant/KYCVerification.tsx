@@ -10,7 +10,6 @@ import {
   StepLabel,
   Button,
   TextField,
-  Upload,
   Alert,
   Chip,
   Grid,

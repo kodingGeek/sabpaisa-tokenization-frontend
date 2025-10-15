@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import PageContainer from '../../components/common/PageContainer';
 import { styled } from '@mui/material/styles';
 import {
@@ -66,7 +67,8 @@ import {
   Clear,
   Refresh
 } from '@mui/icons-material';
-import tokenizationService, { merchantService, Merchant, TokenListResponse } from '../../services/tokenizationService';
+import tokenizationService, { merchantService, Merchant, TokenListResponse, TokenInfo } from '../../services/tokenizationService';
+import { MerchantResponse } from '../../services/merchantService';
 import AddMerchantDialog from '../../components/merchant/AddMerchantDialog';
 import ViewMerchantDialog from '../../components/merchant/ViewMerchantDialog';
 import EditMerchantDialog from '../../components/merchant/EditMerchantDialog';
@@ -98,8 +100,9 @@ const RotatingIcon = styled(Refresh)(({ theme }) => ({
 }));
 
 const MerchantList: React.FC = () => {
+  const navigate = useNavigate();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [tokens, setTokens] = useState<{[merchantId: string]: Token[]}>({});
+  const [tokens, setTokens] = useState<{[merchantId: string]: TokenInfo[]}>({});
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -110,6 +113,7 @@ const MerchantList: React.FC = () => {
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
+  const [editingMerchant, setEditingMerchant] = useState<MerchantResponse | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [sortBy, setSortBy] = useState<string>('businessName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -319,10 +323,10 @@ const MerchantList: React.FC = () => {
         const updatePayload = {
           businessName: selectedMerchant.businessName,
           email: selectedMerchant.email || selectedMerchant.contactEmail || 'update@example.com',
-          phoneNumber: selectedMerchant.contactPhone || selectedMerchant.phoneNumber || '+919876543210',
+          phoneNumber: selectedMerchant.contactPhone || '+919876543210',
           businessType: selectedMerchant.businessType || 'RETAIL',
-          businessAddress: selectedMerchant.businessAddress || 'Not Specified',
-          webhookUrl: selectedMerchant.webhookUrl || '',
+          businessAddress: 'Not Specified',
+          webhookUrl: '',
           status: 'SUSPENDED'
         };
 
@@ -333,7 +337,7 @@ const MerchantList: React.FC = () => {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to suspend merchant');
+          throw new (globalThis.Error)('Failed to suspend merchant');
         }
         
         toast.success('Merchant suspended successfully!');
@@ -352,10 +356,10 @@ const MerchantList: React.FC = () => {
         const updatePayload = {
           businessName: merchant.businessName,
           email: merchant.email || merchant.contactEmail || 'update@example.com',
-          phoneNumber: merchant.contactPhone || merchant.phoneNumber || '+919876543210',
+          phoneNumber: merchant.contactPhone || '+919876543210',
           businessType: merchant.businessType || 'RETAIL',
-          businessAddress: merchant.businessAddress || 'Not Specified',
-          webhookUrl: merchant.webhookUrl || '',
+          businessAddress: 'Not Specified',
+          webhookUrl: '',
           status: newStatus
         };
 
@@ -406,6 +410,22 @@ const MerchantList: React.FC = () => {
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedMerchant(null);
+  };
+
+  const handleEditMerchant = async (merchant: Merchant) => {
+    try {
+      const response = await fetch(`/api/v1/merchants/${merchant.merchantId}`);
+      if (response.ok) {
+        const fullMerchant = await response.json();
+        setEditingMerchant(fullMerchant);
+        setEditDialog(true);
+      } else {
+        toast.error('Failed to fetch merchant details');
+      }
+    } catch (error) {
+      toast.error('Error fetching merchant details');
+      console.error('Error:', error);
+    }
   };
 
   return (
@@ -760,10 +780,7 @@ const MerchantList: React.FC = () => {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Edit">
-                              <IconButton size="small" onClick={() => {
-                                setSelectedMerchant(merchant);
-                                setEditDialog(true);
-                              }}>
+                              <IconButton size="small" onClick={() => handleEditMerchant(merchant)}>
                                 <Edit />
                               </IconButton>
                             </Tooltip>
@@ -866,7 +883,9 @@ const MerchantList: React.FC = () => {
         </MenuItem>
         <MenuItem onClick={() => {
           handleMenuClose();
-          setEditDialog(true);
+          if (selectedMerchant) {
+            handleEditMerchant(selectedMerchant);
+          }
         }}>
           <Edit sx={{ mr: 1 }} /> Edit Details
         </MenuItem>
@@ -918,15 +937,15 @@ const MerchantList: React.FC = () => {
         open={editDialog}
         onClose={() => {
           setEditDialog(false);
-          setSelectedMerchant(null);
+          setEditingMerchant(null);
         }}
         onSuccess={() => {
           setEditDialog(false);
-          setSelectedMerchant(null);
+          setEditingMerchant(null);
           fetchMerchants();
           toast.success('Merchant updated successfully!');
         }}
-        merchant={selectedMerchant}
+        merchant={editingMerchant}
       />
 
       {/* Filter Menu */}

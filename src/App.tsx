@@ -27,7 +27,7 @@ const DashboardLayoutWrapper = lazy(() => import('./components/common/DashboardL
 const MerchantPortal = lazy(() => import('./pages/MerchantPortal'));
 const MerchantList = lazy(() => import('./pages/merchant/MerchantList'));
 const MerchantProfile = lazy(() => import('./pages/merchant/MerchantProfile'));
-const APIConfiguration = lazy(() => import('./pages/merchant/APIConfiguration'));
+// const APIConfiguration = lazy(() => import('./pages/merchant/APIConfiguration'));
 const PlatformManagement = lazy(() => import('./pages/platforms/PlatformManagement'));
 const KYCVerification = lazy(() => import('./pages/merchant/KYCVerification'));
 const MerchantSettings = lazy(() => import('./pages/merchant/MerchantSettings'));
@@ -158,7 +158,7 @@ const App: React.FC = () => {
                       <Route index element={<MerchantList />} />
                       <Route path="portal" element={<MerchantPortal />} />
                       <Route path="profile" element={<MerchantProfile />} />
-                      <Route path="api-config" element={<APIConfiguration />} />
+                      {/* <Route path="api-config" element={<APIConfiguration />} /> */}
                       <Route path="platforms" element={<PlatformManagement />} />
                       <Route path="kyc" element={<KYCVerification />} />
                       <Route path="settings" element={<MerchantSettings />} />

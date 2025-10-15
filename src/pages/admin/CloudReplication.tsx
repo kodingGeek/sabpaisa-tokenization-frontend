@@ -26,7 +26,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemSecondary,
+  ListItemSecondaryAction,
   CircularProgress,
   Tooltip,
   Avatar,

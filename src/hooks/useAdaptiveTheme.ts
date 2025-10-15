@@ -36,7 +36,7 @@ export const useAdaptiveTheme = (): AdaptiveThemeHook => {
   const [shouldSuggest, setShouldSuggest] = useState(false);
   
   if (!context) {
-    throw new Error('useAdaptiveTheme must be used within an AdaptiveThemeProvider');
+    throw new (globalThis.Error)('useAdaptiveTheme must be used within an AdaptiveThemeProvider');
   }
   
   const {
@@ -150,7 +150,7 @@ export const useThemeColors = () => {
   const context = useContext(AdaptiveThemeContext);
   
   if (!context) {
-    throw new Error('useThemeColors must be used within an AdaptiveThemeProvider');
+    throw new (globalThis.Error)('useThemeColors must be used within an AdaptiveThemeProvider');
   }
   
   const { currentTheme } = context;

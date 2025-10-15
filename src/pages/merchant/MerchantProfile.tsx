@@ -15,10 +15,6 @@ import {
   Tabs,
   Alert,
   Paper,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Switch,
   FormControlLabel,
   Select,
@@ -36,9 +32,7 @@ import {
   Email,
   Phone,
   LocationOn,
-  AccountBalance,
   CreditCard,
-  VerifiedUser,
   Security,
   AttachMoney,
   Edit,
@@ -47,14 +41,12 @@ import {
   CheckCircle,
   Warning,
   Error as ErrorIcon,
-  Fingerprint,
-  CloudSync,
   Shield,
-  Refresh,
+  Fingerprint,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import merchantService from '../../services/merchantService';
+import merchantService, { MerchantResponse } from '../../services/merchantService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -76,7 +68,7 @@ const MerchantProfile: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [merchantData, setMerchantData] = useState<any>({
+  const [merchantData, setMerchantData] = useState<MerchantResponse>({
     merchantId: '',
     businessName: '',
     email: '',
@@ -86,53 +78,25 @@ const MerchantProfile: React.FC = () => {
     panNumber: '',
     gstNumber: '',
     status: 'ACTIVE',
-    registrationNumber: '',
-    incorporationDate: '',
-    businessCategory: '',
-    mccCode: '',
-    websiteUrl: '',
-    countryCode: 'IN',
-    stateCode: '',
-    city: '',
-    postalCode: '',
-    primaryContactName: '',
-    primaryContactEmail: '',
-    primaryContactPhone: '',
-    bankAccountNumber: '',
-    bankName: '',
-    bankIfscCode: '',
-    bankBranch: '',
-    accountHolderName: '',
-    settlementCurrency: 'INR',
-    annualRevenue: '',
-    monthlyTransactionVolume: '',
-    averageTransactionValue: '',
-    expectedMonthlyTokens: '',
-    riskRating: 'MEDIUM',
-    kycStatus: 'VERIFIED',
-    complianceStatus: 'COMPLIANT',
-    pciDssCompliant: true,
-    pciDssLevel: 'LEVEL_4',
-    apiRateLimit: 1000,
-    biometricTokenizationEnabled: false,
-    quantumEncryptionEnabled: false,
-    platformTokenizationEnabled: true,
-    bulkOperationsEnabled: true,
-    twoFactorEnabled: true,
-    smsNotificationsEnabled: true,
-    emailNotificationsEnabled: true,
-    webhookNotificationsEnabled: true,
-    billingCycle: 'MONTHLY',
-    creditLimit: '',
-    currentBalance: '0',
-    paymentMethod: 'BANK_TRANSFER',
-    totalTokensCreated: 0,
-    activeTokensCount: 0,
-    tokensCreatedToday: 0,
-    tokensCreatedThisMonth: 0,
+    webhookUrl: '',
+    settings: {
+      allowRefunds: true,
+      allowPartialRefunds: false,
+      tokenExpiryDays: 1095,
+      maxTokensPerCard: 5,
+      notifyOnTokenCreation: true,
+    },
+    stats: {
+      totalTokens: 0,
+      activeTokens: 0,
+      totalTransactions: 0,
+      tokensCreatedToday: 0,
+    },
+    createdAt: '',
+    updatedAt: '',
   });
 
-  const [originalData, setOriginalData] = useState<any>({});
+  const [originalData, setOriginalData] = useState<MerchantResponse | null>(null);
 
   useEffect(() => {
     fetchMerchantProfile();
@@ -163,7 +127,9 @@ const MerchantProfile: React.FC = () => {
   };
 
   const handleCancel = () => {
-    setMerchantData(originalData);
+    if (originalData) {
+      setMerchantData(originalData);
+    }
     setEditMode(false);
   };
 
@@ -183,8 +149,8 @@ const MerchantProfile: React.FC = () => {
     }
   };
 
-  const handleFieldChange = (field: string, value: any) => {
-    setMerchantData((prev: any) => ({
+  const handleFieldChange = (field: keyof MerchantResponse, value: any) => {
+    setMerchantData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -201,15 +167,6 @@ const MerchantProfile: React.FC = () => {
     }
   };
 
-  const getKYCStatusColor = (status: string) => {
-    switch (status) {
-      case 'VERIFIED': return 'success';
-      case 'IN_PROGRESS': return 'warning';
-      case 'REJECTED': return 'error';
-      case 'PENDING': return 'info';
-      default: return 'default';
-    }
-  };
 
   if (loading) {
     return (
@@ -291,19 +248,14 @@ const MerchantProfile: React.FC = () => {
         </FormControl>
       </Grid>
       <Grid item xs={12} md={6}>
-        <FormControl fullWidth disabled={!editMode}>
-          <InputLabel>Business Category</InputLabel>
-          <Select
-            value={merchantData.businessCategory || ''}
-            onChange={(e) => handleFieldChange('businessCategory', e.target.value)}
-            label="Business Category"
-          >
-            <MenuItem value="B2B">B2B</MenuItem>
-            <MenuItem value="B2C">B2C</MenuItem>
-            <MenuItem value="B2B2C">B2B2C</MenuItem>
-            <MenuItem value="C2C">C2C</MenuItem>
-          </Select>
-        </FormControl>
+        <TextField
+          fullWidth
+          label="Webhook URL"
+          value={merchantData.webhookUrl || ''}
+          onChange={(e) => handleFieldChange('webhookUrl', e.target.value)}
+          disabled={!editMode}
+          placeholder="https://example.com/webhook"
+        />
       </Grid>
       <Grid item xs={12}>
         <TextField
@@ -317,33 +269,6 @@ const MerchantProfile: React.FC = () => {
           InputProps={{
             startAdornment: <InputAdornment position="start"><LocationOn /></InputAdornment>,
           }}
-        />
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="City"
-          value={merchantData.city}
-          onChange={(e) => handleFieldChange('city', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="State Code"
-          value={merchantData.stateCode}
-          onChange={(e) => handleFieldChange('stateCode', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="Postal Code"
-          value={merchantData.postalCode}
-          onChange={(e) => handleFieldChange('postalCode', e.target.value)}
-          disabled={!editMode}
         />
       </Grid>
       <Grid item xs={12} md={6}>
@@ -364,296 +289,145 @@ const MerchantProfile: React.FC = () => {
           disabled={!editMode}
         />
       </Grid>
+    </Grid>
+  );
+
+  const renderSettings = () => (
+    <Grid container spacing={3}>
+      <Grid item xs={12}>
+        <Typography variant="h6" gutterBottom>Token Settings</Typography>
+      </Grid>
+      
+      <Grid item xs={12} md={6}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography>Allow Refunds:</Typography>
+          <Switch
+            checked={merchantData.settings.allowRefunds}
+            onChange={(e) => {
+              setMerchantData(prev => ({
+                ...prev,
+                settings: { ...prev.settings, allowRefunds: e.target.checked }
+              }));
+            }}
+            disabled={!editMode}
+          />
+        </Box>
+      </Grid>
+      
+      <Grid item xs={12} md={6}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography>Allow Partial Refunds:</Typography>
+          <Switch
+            checked={merchantData.settings.allowPartialRefunds}
+            onChange={(e) => {
+              setMerchantData(prev => ({
+                ...prev,
+                settings: { ...prev.settings, allowPartialRefunds: e.target.checked }
+              }));
+            }}
+            disabled={!editMode}
+          />
+        </Box>
+      </Grid>
+      
       <Grid item xs={12} md={6}>
         <TextField
           fullWidth
-          label="Registration Number"
-          value={merchantData.registrationNumber}
-          onChange={(e) => handleFieldChange('registrationNumber', e.target.value)}
+          label="Token Expiry Days"
+          type="number"
+          value={merchantData.settings.tokenExpiryDays}
+          onChange={(e) => {
+            setMerchantData(prev => ({
+              ...prev,
+              settings: { ...prev.settings, tokenExpiryDays: parseInt(e.target.value) || 0 }
+            }));
+          }}
           disabled={!editMode}
         />
       </Grid>
+      
       <Grid item xs={12} md={6}>
         <TextField
           fullWidth
-          label="Website URL"
-          value={merchantData.websiteUrl}
-          onChange={(e) => handleFieldChange('websiteUrl', e.target.value)}
+          label="Max Tokens Per Card"
+          type="number"
+          value={merchantData.settings.maxTokensPerCard}
+          onChange={(e) => {
+            setMerchantData(prev => ({
+              ...prev,
+              settings: { ...prev.settings, maxTokensPerCard: parseInt(e.target.value) || 0 }
+            }));
+          }}
           disabled={!editMode}
         />
+      </Grid>
+      
+      <Grid item xs={12} md={6}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography>Notify on Token Creation:</Typography>
+          <Switch
+            checked={merchantData.settings.notifyOnTokenCreation}
+            onChange={(e) => {
+              setMerchantData(prev => ({
+                ...prev,
+                settings: { ...prev.settings, notifyOnTokenCreation: e.target.checked }
+              }));
+            }}
+            disabled={!editMode}
+          />
+        </Box>
       </Grid>
     </Grid>
   );
 
-  const renderBankingInfo = () => (
+  const renderApiCredentials = () => (
     <Grid container spacing={3}>
-      <Grid item xs={12} md={6}>
-        <TextField
-          fullWidth
-          label="Bank Name"
-          value={merchantData.bankName}
-          onChange={(e) => handleFieldChange('bankName', e.target.value)}
-          disabled={!editMode}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><AccountBalance /></InputAdornment>,
-          }}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          fullWidth
-          label="Account Number"
-          type={editMode ? 'text' : 'password'}
-          value={merchantData.bankAccountNumber}
-          onChange={(e) => handleFieldChange('bankAccountNumber', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          fullWidth
-          label="IFSC Code"
-          value={merchantData.bankIfscCode}
-          onChange={(e) => handleFieldChange('bankIfscCode', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          fullWidth
-          label="Branch Name"
-          value={merchantData.bankBranch}
-          onChange={(e) => handleFieldChange('bankBranch', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          fullWidth
-          label="Account Holder Name"
-          value={merchantData.accountHolderName}
-          onChange={(e) => handleFieldChange('accountHolderName', e.target.value)}
-          disabled={!editMode}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <FormControl fullWidth disabled={!editMode}>
-          <InputLabel>Settlement Currency</InputLabel>
-          <Select
-            value={merchantData.settlementCurrency}
-            onChange={(e) => handleFieldChange('settlementCurrency', e.target.value)}
-            label="Settlement Currency"
-          >
-            <MenuItem value="INR">INR - Indian Rupee</MenuItem>
-            <MenuItem value="USD">USD - US Dollar</MenuItem>
-            <MenuItem value="EUR">EUR - Euro</MenuItem>
-            <MenuItem value="GBP">GBP - British Pound</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
-      
       <Grid item xs={12}>
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" gutterBottom>Business Metrics</Typography>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          API credentials are sensitive information. Handle with care!
+        </Alert>
       </Grid>
       
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="Annual Revenue"
-          type="number"
-          value={merchantData.annualRevenue}
-          onChange={(e) => handleFieldChange('annualRevenue', e.target.value)}
-          disabled={!editMode}
-          InputProps={{
-            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-          }}
-        />
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="Monthly Transaction Volume"
-          type="number"
-          value={merchantData.monthlyTransactionVolume}
-          onChange={(e) => handleFieldChange('monthlyTransactionVolume', e.target.value)}
-          disabled={!editMode}
-          InputProps={{
-            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-          }}
-        />
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <TextField
-          fullWidth
-          label="Average Transaction Value"
-          type="number"
-          value={merchantData.averageTransactionValue}
-          onChange={(e) => handleFieldChange('averageTransactionValue', e.target.value)}
-          disabled={!editMode}
-          InputProps={{
-            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-          }}
-        />
-      </Grid>
-    </Grid>
-  );
-
-  const renderCompliance = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12} md={6} lg={4}>
+      <Grid item xs={12} md={6}>
         <Card>
           <CardContent>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Typography variant="h6">KYC Status</Typography>
-              <VerifiedUser color="primary" />
-            </Box>
-            <Chip
-              label={merchantData.kycStatus}
-              color={getKYCStatusColor(merchantData.kycStatus)}
-              sx={{ mb: 2 }}
-            />
-            {merchantData.kycVerifiedAt && (
-              <Typography variant="body2" color="text.secondary">
-                Verified on: {new Date(merchantData.kycVerifiedAt).toLocaleDateString()}
-              </Typography>
-            )}
+            <Typography variant="h6" gutterBottom>API Key</Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              API Key Hint:
+            </Typography>
+            <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+              {merchantData.apiCredentials?.apiKeyHint || 'Not generated'}
+            </Typography>
           </CardContent>
         </Card>
       </Grid>
       
-      <Grid item xs={12} md={6} lg={4}>
+      <Grid item xs={12} md={6}>
         <Card>
           <CardContent>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Typography variant="h6">PCI DSS Compliance</Typography>
-              <Security color="primary" />
-            </Box>
-            <Stack spacing={1}>
+            <Typography variant="h6" gutterBottom>Status Information</Typography>
+            <Stack spacing={2}>
               <Box display="flex" alignItems="center" gap={1}>
-                <Typography>Status:</Typography>
-                <Chip
-                  label={merchantData.pciDssCompliant ? 'Compliant' : 'Non-Compliant'}
-                  color={merchantData.pciDssCompliant ? 'success' : 'error'}
+                <Typography variant="body2">Account Status:</Typography>
+                <Chip 
+                  label={merchantData.status} 
+                  color={getStatusColor(merchantData.status)}
                   size="small"
                 />
               </Box>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography>Level:</Typography>
-                <Chip label={merchantData.pciDssLevel} size="small" />
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Created: {new Date(merchantData.createdAt).toLocaleDateString()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Last Updated: {new Date(merchantData.updatedAt).toLocaleDateString()}
+                </Typography>
               </Box>
             </Stack>
           </CardContent>
         </Card>
-      </Grid>
-      
-      <Grid item xs={12} md={6} lg={4}>
-        <Card>
-          <CardContent>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Typography variant="h6">Risk Assessment</Typography>
-              <Shield color="primary" />
-            </Box>
-            <Stack spacing={1}>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography>Rating:</Typography>
-                <Chip
-                  label={merchantData.riskRating}
-                  color={merchantData.riskRating === 'LOW' ? 'success' : merchantData.riskRating === 'HIGH' ? 'error' : 'warning'}
-                  size="small"
-                />
-              </Box>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography>Score:</Typography>
-                <Typography variant="body2">{merchantData.riskScore || 'N/A'}/100</Typography>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid item xs={12}>
-        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-          Security Features
-        </Typography>
-        <Paper sx={{ p: 2 }}>
-          <List>
-            <ListItem>
-              <ListItemIcon>
-                <Security />
-              </ListItemIcon>
-              <ListItemText
-                primary="Two-Factor Authentication"
-                secondary="Enhance security with 2FA"
-              />
-              <Switch
-                checked={merchantData.twoFactorEnabled}
-                onChange={(e) => handleFieldChange('twoFactorEnabled', e.target.checked)}
-                disabled={!editMode}
-              />
-            </ListItem>
-            
-            <ListItem>
-              <ListItemIcon>
-                <Fingerprint />
-              </ListItemIcon>
-              <ListItemText
-                primary="Biometric Tokenization"
-                secondary="Enable biometric-based token generation"
-              />
-              <Switch
-                checked={merchantData.biometricTokenizationEnabled}
-                onChange={(e) => handleFieldChange('biometricTokenizationEnabled', e.target.checked)}
-                disabled={!editMode}
-              />
-            </ListItem>
-            
-            <ListItem>
-              <ListItemIcon>
-                <Shield />
-              </ListItemIcon>
-              <ListItemText
-                primary="Quantum Encryption"
-                secondary="Next-generation quantum-resistant encryption"
-              />
-              <Switch
-                checked={merchantData.quantumEncryptionEnabled}
-                onChange={(e) => handleFieldChange('quantumEncryptionEnabled', e.target.checked)}
-                disabled={!editMode}
-              />
-            </ListItem>
-            
-            <ListItem>
-              <ListItemIcon>
-                <CloudSync />
-              </ListItemIcon>
-              <ListItemText
-                primary="Platform Tokenization"
-                secondary="Enable cross-platform token sharing"
-              />
-              <Switch
-                checked={merchantData.platformTokenizationEnabled}
-                onChange={(e) => handleFieldChange('platformTokenizationEnabled', e.target.checked)}
-                disabled={!editMode}
-              />
-            </ListItem>
-            
-            <ListItem>
-              <ListItemIcon>
-                <Refresh />
-              </ListItemIcon>
-              <ListItemText
-                primary="Bulk Operations"
-                secondary="Enable bulk tokenization and retokenization"
-              />
-              <Switch
-                checked={merchantData.bulkOperationsEnabled}
-                onChange={(e) => handleFieldChange('bulkOperationsEnabled', e.target.checked)}
-                disabled={!editMode}
-              />
-            </ListItem>
-          </List>
-        </Paper>
       </Grid>
     </Grid>
   );
@@ -664,10 +438,10 @@ const MerchantProfile: React.FC = () => {
         <Card>
           <CardContent>
             <Typography color="textSecondary" variant="subtitle2">
-              Total Tokens Created
+              Total Tokens
             </Typography>
             <Typography variant="h4">
-              {merchantData.totalTokensCreated?.toLocaleString() || '0'}
+              {merchantData.stats.totalTokens?.toLocaleString() || '0'}
             </Typography>
           </CardContent>
         </Card>
@@ -680,7 +454,20 @@ const MerchantProfile: React.FC = () => {
               Active Tokens
             </Typography>
             <Typography variant="h4" color="success.main">
-              {merchantData.activeTokensCount?.toLocaleString() || '0'}
+              {merchantData.stats.activeTokens?.toLocaleString() || '0'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      
+      <Grid item xs={12} sm={6} md={3}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" variant="subtitle2">
+              Total Transactions
+            </Typography>
+            <Typography variant="h4">
+              {merchantData.stats.totalTransactions?.toLocaleString() || '0'}
             </Typography>
           </CardContent>
         </Card>
@@ -693,58 +480,10 @@ const MerchantProfile: React.FC = () => {
               Tokens Today
             </Typography>
             <Typography variant="h4">
-              {merchantData.tokensCreatedToday?.toLocaleString() || '0'}
+              {merchantData.stats.tokensCreatedToday?.toLocaleString() || '0'}
             </Typography>
           </CardContent>
         </Card>
-      </Grid>
-      
-      <Grid item xs={12} sm={6} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" variant="subtitle2">
-              This Month
-            </Typography>
-            <Typography variant="h4">
-              {merchantData.tokensCreatedThisMonth?.toLocaleString() || '0'}
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      
-      <Grid item xs={12}>
-        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-          API Usage & Limits
-        </Typography>
-        <Paper sx={{ p: 3 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  API Rate Limit
-                </Typography>
-                <Box display="flex" alignItems="baseline" gap={1}>
-                  <Typography variant="h5">{merchantData.apiRateLimit}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    requests per hour
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Last API Call
-                </Typography>
-                <Typography variant="body1">
-                  {merchantData.lastApiCallAt 
-                    ? new Date(merchantData.lastApiCallAt).toLocaleString()
-                    : 'No API calls yet'}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
       </Grid>
     </Grid>
   );
@@ -823,9 +562,9 @@ const MerchantProfile: React.FC = () => {
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
             <Tab label="Basic Information" />
-            <Tab label="Banking & Billing" />
-            <Tab label="Compliance & Security" />
-            <Tab label="Statistics & Usage" />
+            <Tab label="Settings" />
+            <Tab label="API & Status" />
+            <Tab label="Statistics" />
           </Tabs>
           
           <TabPanel value={activeTab} index={0}>
@@ -833,11 +572,11 @@ const MerchantProfile: React.FC = () => {
           </TabPanel>
           
           <TabPanel value={activeTab} index={1}>
-            {renderBankingInfo()}
+            {renderSettings()}
           </TabPanel>
           
           <TabPanel value={activeTab} index={2}>
-            {renderCompliance()}
+            {renderApiCredentials()}
           </TabPanel>
           
           <TabPanel value={activeTab} index={3}>

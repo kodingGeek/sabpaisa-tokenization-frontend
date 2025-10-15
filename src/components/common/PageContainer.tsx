@@ -1,18 +1,18 @@
 import React from 'react';
-import { Box, BoxProps } from '@mui/material';
+import { Box, SxProps, Theme } from '@mui/material';
 
-interface PageContainerProps extends BoxProps {
+interface PageContainerProps {
   children: React.ReactNode;
   noPadding?: boolean;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | false;
+  sx?: SxProps<Theme>;
 }
 
 const PageContainer: React.FC<PageContainerProps> = ({ 
   children, 
   noPadding = false,
   maxWidth = false,
-  sx,
-  ...props 
+  sx
 }) => {
   return (
     <Box
@@ -22,7 +22,6 @@ const PageContainer: React.FC<PageContainerProps> = ({
         mx: maxWidth ? 'auto' : 0,
         ...sx
       }}
-      {...props}
     >
       {children}
     </Box>

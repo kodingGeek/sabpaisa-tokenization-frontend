@@ -5,7 +5,6 @@ import {
   CardHeader,
   Typography,
   Box,
-  Calendar,
   Badge,
   List,
   ListItem,
@@ -279,7 +278,12 @@ const ScheduledAudits: React.FC = () => {
                 label="Start Date"
                 value={selectedDate}
                 onChange={(newValue) => setSelectedDate(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    margin: "normal"
+                  }
+                }}
               />
             </LocalizationProvider>
             <TextField

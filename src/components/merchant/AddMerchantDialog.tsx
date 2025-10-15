@@ -18,7 +18,7 @@ import {
   Divider
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
-import axios from 'axios';
+import merchantService, { CreateMerchantRequest } from '../../services/merchantService';
 
 interface AddMerchantDialogProps {
   open: boolean;
@@ -26,25 +26,7 @@ interface AddMerchantDialogProps {
   onSuccess: () => void;
 }
 
-interface MerchantFormData {
-  businessName: string;
-  email: string;
-  phoneNumber: string;
-  businessType: string;
-  businessAddress: string;
-  panNumber: string;
-  gstNumber: string;
-  webhookUrl: string;
-  settings: {
-    allowRefunds: boolean;
-    allowPartialRefunds: boolean;
-    tokenExpiryDays: number;
-    maxTokensPerCard: number;
-    notifyOnTokenCreation: boolean;
-  };
-}
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8082/api/v1';
+// Using CreateMerchantRequest from merchantService
 
 const businessTypes = [
   'E-Commerce',
@@ -70,7 +52,7 @@ const AddMerchantDialog: React.FC<AddMerchantDialogProps> = ({ open, onClose, on
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<MerchantFormData>({
+  } = useForm<CreateMerchantRequest>({
     defaultValues: {
       businessName: '',
       email: '',
@@ -90,21 +72,18 @@ const AddMerchantDialog: React.FC<AddMerchantDialogProps> = ({ open, onClose, on
     }
   });
 
-  const onSubmit = async (data: MerchantFormData) => {
+  const onSubmit = async (data: CreateMerchantRequest) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/merchants`, data);
-      
-      if (response.status === 201) {
-        setSuccess(true);
-        setTimeout(() => {
-          reset();
-          onSuccess();
-        }, 1500);
-      }
+      const response = await merchantService.createMerchant(data);
+      setSuccess(true);
+      setTimeout(() => {
+        reset();
+        onSuccess();
+      }, 1500);
     } catch (err: any) {
       console.error('Error creating merchant:', err);
       setError(err.response?.data?.message || 'Failed to create merchant. Please try again.');

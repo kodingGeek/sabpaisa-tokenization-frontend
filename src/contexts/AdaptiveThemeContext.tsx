@@ -35,7 +35,7 @@ const AdaptiveThemeContext = createContext<AdaptiveThemeContextType | undefined>
 export const useAdaptiveTheme = () => {
   const context = useContext(AdaptiveThemeContext);
   if (!context) {
-    throw new Error('useAdaptiveTheme must be used within an AdaptiveThemeProvider');
+    throw new (globalThis.Error)('useAdaptiveTheme must be used within an AdaptiveThemeProvider');
   }
   return context;
 };

@@ -48,11 +48,11 @@ class FetchClient {
         // Clear local storage and redirect to login
         localStorage.clear();
         window.location.href = '/login';
-        throw new Error('Unauthorized');
+        throw new (globalThis.Error)('Unauthorized');
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new (globalThis.Error)(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();

@@ -21,14 +21,14 @@ import {
   Typography,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
-import { merchantService, Merchant } from '../../services/tokenizationService';
+import { MerchantResponse } from '../../services/merchantService';
 import { toast } from 'react-toastify';
 
 interface EditMerchantDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  merchant: Merchant | null;
+  merchant: MerchantResponse | null;
 }
 
 interface EditMerchantForm {
@@ -36,7 +36,6 @@ interface EditMerchantForm {
   email: string;
   contactPhone: string;
   businessType: string;
-  website: string;
   gstNumber: string;
   panNumber: string;
   registrationNumber: string;
@@ -73,29 +72,28 @@ const EditMerchantDialog: React.FC<EditMerchantDialogProps> = ({ open, onClose, 
     if (merchant && open) {
       reset({
         businessName: merchant.businessName || '',
-        email: merchant.email || merchant.contactEmail || '',
-        contactPhone: merchant.contactPhone || '',
+        email: merchant.email || '',
+        contactPhone: merchant.phoneNumber || '',
         businessType: merchant.businessType || 'RETAIL',
-        website: merchant.website || '',
         gstNumber: merchant.gstNumber || '',
         panNumber: merchant.panNumber || '',
-        registrationNumber: merchant.registrationNumber || '',
+        registrationNumber: '',
         businessAddress: merchant.businessAddress || '',
-        city: merchant.city || '',
-        state: merchant.state || '',
-        country: merchant.country || 'India',
-        postalCode: merchant.postalCode || '',
-        bankAccountNumber: merchant.bankAccountNumber || '',
-        bankName: merchant.bankName || '',
-        ifscCode: merchant.ifscCode || '',
+        city: '',
+        state: '',
+        country: 'India',
+        postalCode: '',
+        bankAccountNumber: '',
+        bankName: '',
+        ifscCode: '',
         status: merchant.status || 'ACTIVE',
-        kycStatus: merchant.kycStatus || 'PENDING',
-        riskRating: merchant.riskRating || 'LOW',
-        settlementFrequency: merchant.settlementFrequency || 'DAILY',
+        kycStatus: 'PENDING',
+        riskRating: 'LOW',
+        settlementFrequency: 'DAILY',
         webhookUrl: merchant.webhookUrl || '',
-        ipWhitelist: merchant.ipWhitelist || '',
-        twoFactorEnabled: merchant.twoFactorEnabled || false,
-        autoSettlement: merchant.autoSettlement || false,
+        ipWhitelist: '',
+        twoFactorEnabled: false,
+        autoSettlement: false,
       });
     }
   }, [merchant, open, reset]);
@@ -136,7 +134,7 @@ const EditMerchantDialog: React.FC<EditMerchantDialogProps> = ({ open, onClose, 
       if (!response.ok) {
         const errorData = await response.text();
         console.error('Update failed:', errorData);
-        throw new Error('Failed to update merchant');
+        throw new (globalThis.Error)('Failed to update merchant');
       }
 
       toast.success('Merchant updated successfully!');
@@ -266,20 +264,6 @@ const EditMerchantDialog: React.FC<EditMerchantDialogProps> = ({ open, onClose, 
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
-              <Controller
-                name="website"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Website"
-                    fullWidth
-                    placeholder="https://example.com"
-                  />
-                )}
-              />
-            </Grid>
             
             {/* Status and Settings */}
             <Grid item xs={12}>

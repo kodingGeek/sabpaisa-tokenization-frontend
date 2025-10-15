@@ -5,7 +5,7 @@ export const useAppTheme = () => {
   const context = useContext(ThemeContext);
   
   if (!context) {
-    throw new Error('useAppTheme must be used within a ThemeProvider');
+    throw new (globalThis.Error)('useAppTheme must be used within a ThemeProvider');
   }
   
   return context;

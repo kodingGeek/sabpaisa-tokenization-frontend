@@ -19,3 +19,16 @@ build
 .nyc_output
 .coverage
 *.log
+*.zip
+aws/
+temp/
+*.md
+server*.log
+app*.log
+test-*.html
+test-*.js
+start*.sh
+start*.cmd
+start*.ps1
+*.html
+scripts/
