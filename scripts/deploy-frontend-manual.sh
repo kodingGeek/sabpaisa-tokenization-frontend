@@ -93,7 +93,7 @@ TG_ARN=$(aws elbv2 create-target-group \
   --vpc-id $VPC_ID \
   --target-type ip \
   --health-check-path / \
-  --matcher HttpCode=200,304,404 \
+  --matcher "HttpCode=200,304,404" \
   --query 'TargetGroups[0].TargetGroupArn' \
   --output text)
 

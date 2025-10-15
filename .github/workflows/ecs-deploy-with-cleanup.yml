@@ -222,7 +222,7 @@ jobs:
           --health-check-timeout-seconds 5 \
           --healthy-threshold-count 2 \
           --unhealthy-threshold-count 3 \
-          --matcher HttpCode=200,304,404 \
+          --matcher "HttpCode=200,304,404" \
           --query 'TargetGroups[0].TargetGroupArn' \
           --output text)
         
