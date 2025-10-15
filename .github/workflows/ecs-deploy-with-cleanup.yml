@@ -1,0 +1,364 @@
+name: Deploy Frontend to ECS (With Cleanup)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      cleanup_first:
+        description: 'Clean up existing resources before deploy'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+      image_tag:
+        description: 'Docker Image Tag'
+        required: false
+        default: 'latest'
+        type: string
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: sabpaisa-tokenization-frontend
+  ECS_CLUSTER: sabpaisa-tokenization-cluster
+  ECS_SERVICE: sabpaisa-tokenization-frontend
+  CONTAINER_NAME: frontend
+  TASK_FAMILY: sabpaisa-tokenization-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Cleanup Existing Resources
+      if: ${{ github.event.inputs.cleanup_first == 'true' }}
+      run: |
+        echo "🧹 Cleaning up existing resources..."
+        
+        # Delete ECS service if exists
+        if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query 'services[0].serviceName' --output text 2>/dev/null | grep -q $ECS_SERVICE; then
+          echo "Deleting existing ECS service..."
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --desired-count 0 || true
+          aws ecs delete-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force || true
+          echo "Waiting for service deletion..."
+          sleep 30
+        fi
+        
+        # Delete target groups
+        for TG in sabpaisa-frontend-tg sabpaisa-frontend; do
+          TG_ARN=$(aws elbv2 describe-target-groups --names $TG --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+          if [ ! -z "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
+            echo "Deleting target group $TG..."
+            aws elbv2 delete-target-group --target-group-arn $TG_ARN || true
+          fi
+        done
+        
+        # Delete security groups
+        for SG in sabpaisa-frontend-sg sabpaisa-frontend; do
+          SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$SG" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "")
+          if [ ! -z "$SG_ID" ] && [ "$SG_ID" != "None" ]; then
+            echo "Deleting security group $SG..."
+            aws ec2 delete-security-group --group-id $SG_ID || true
+          fi
+        done
+        
+        echo "Cleanup completed!"
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Get Infrastructure Info
+      id: infra
+      run: |
+        echo "🔍 Getting infrastructure information..."
+        
+        # Get AWS Account ID
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+        
+        # Create ECR repository if needed
+        aws ecr describe-repositories --repository-names $ECR_REPOSITORY 2>/dev/null || \
+        aws ecr create-repository --repository-name $ECR_REPOSITORY --image-scanning-configuration scanOnPush=true
+        
+        # Get repository URI
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $ECR_REPOSITORY --query 'repositories[0].repositoryUri' --output text)
+        echo "repository_uri=$REPOSITORY_URI" >> $GITHUB_OUTPUT
+        
+        # Get ALB info
+        ALB_DNS=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null || echo "")
+        ALB_ARN=$(aws elbv2 describe-load-balancers --names sabpaisa-tokenization-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
+        
+        if [ -z "$ALB_DNS" ] || [ "$ALB_DNS" == "None" ]; then
+          echo "❌ ALB not found. Looking for any ALB..."
+          ALB_INFO=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[0].[LoadBalancerArn,DNSName]' --output text)
+          ALB_ARN=$(echo $ALB_INFO | cut -f1)
+          ALB_DNS=$(echo $ALB_INFO | cut -f2)
+        fi
+        
+        echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
+        echo "alb_arn=$ALB_ARN" >> $GITHUB_OUTPUT
+        
+        # Get VPC from ALB
+        VPC_ID=""
+        if [ ! -z "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
+          VPC_ID=$(aws elbv2 describe-load-balancers --load-balancer-arns $ALB_ARN --query 'LoadBalancers[0].VpcId' --output text)
+        fi
+        
+        # If no VPC from ALB, use default
+        if [ -z "$VPC_ID" ] || [ "$VPC_ID" == "None" ]; then
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query 'Vpcs[0].VpcId' --output text)
+        fi
+        
+        echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+        
+        # Get subnets from the same VPC
+        SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[*].SubnetId' --output text)
+        SUBNET_1=$(echo $SUBNETS | cut -d' ' -f1)
+        SUBNET_2=$(echo $SUBNETS | cut -d' ' -f2)
+        
+        if [ -z "$SUBNET_2" ]; then
+          SUBNET_2=$SUBNET_1
+        fi
+        
+        echo "subnet_1=$SUBNET_1" >> $GITHUB_OUTPUT
+        echo "subnet_2=$SUBNET_2" >> $GITHUB_OUTPUT
+        
+        # Backend URL
+        if [ ! -z "$ALB_DNS" ] && [ "$ALB_DNS" != "None" ]; then
+          BACKEND_URL="http://$ALB_DNS/tokenization-backend"
+        else
+          BACKEND_URL="http://localhost:8080/tokenization-backend"
+        fi
+        echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        
+        echo "Infrastructure Info:"
+        echo "- VPC: $VPC_ID"
+        echo "- Subnets: $SUBNET_1, $SUBNET_2"
+        echo "- ALB: $ALB_DNS"
+        
+    - name: Build and Push Docker Image
+      id: build
+      run: |
+        IMAGE_TAG=${{ github.event.inputs.image_tag }}
+        if [ "$IMAGE_TAG" = "latest" ]; then
+          IMAGE_TAG="${GITHUB_SHA:0:8}"
+        fi
+        
+        IMAGE_URI="${{ steps.infra.outputs.repository_uri }}:$IMAGE_TAG"
+        
+        echo "🐳 Building Docker image..."
+        docker build \
+          --build-arg REACT_APP_API_URL="${{ steps.infra.outputs.backend_url }}" \
+          -t $IMAGE_URI .
+        
+        echo "📤 Pushing to ECR..."
+        docker push $IMAGE_URI
+        
+        docker tag $IMAGE_URI ${{ steps.infra.outputs.repository_uri }}:latest
+        docker push ${{ steps.infra.outputs.repository_uri }}:latest
+        
+        echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+        
+    - name: Create Security Group
+      id: security
+      run: |
+        echo "🔒 Creating security group..."
+        
+        # Create new security group
+        SG_ID=$(aws ec2 create-security-group \
+          --group-name sabpaisa-frontend-sg-${{ github.run_number }} \
+          --description "Security group for frontend deployment ${{ github.run_number }}" \
+          --vpc-id ${{ steps.infra.outputs.vpc_id }} \
+          --query 'GroupId' \
+          --output text)
+        
+        # Add ingress rules
+        aws ec2 authorize-security-group-ingress \
+          --group-id $SG_ID \
+          --protocol tcp \
+          --port 80 \
+          --cidr 0.0.0.0/0
+        
+        echo "security_group=$SG_ID" >> $GITHUB_OUTPUT
+        
+    - name: Create Target Group
+      id: target
+      run: |
+        echo "🎯 Creating target group..."
+        
+        # Create new target group with unique name
+        TG_NAME="frontend-tg-${{ github.run_number }}"
+        
+        TG_ARN=$(aws elbv2 create-target-group \
+          --name $TG_NAME \
+          --protocol HTTP \
+          --port 80 \
+          --vpc-id ${{ steps.infra.outputs.vpc_id }} \
+          --target-type ip \
+          --health-check-protocol HTTP \
+          --health-check-path / \
+          --health-check-interval-seconds 30 \
+          --health-check-timeout-seconds 5 \
+          --healthy-threshold-count 2 \
+          --unhealthy-threshold-count 3 \
+          --matcher HttpCode=200,304,404 \
+          --query 'TargetGroups[0].TargetGroupArn' \
+          --output text)
+        
+        echo "target_group_arn=$TG_ARN" >> $GITHUB_OUTPUT
+        
+        # Configure ALB listener
+        if [ ! -z "${{ steps.infra.outputs.alb_arn }}" ] && [ "${{ steps.infra.outputs.alb_arn }}" != "None" ]; then
+          LISTENER_ARN=$(aws elbv2 describe-listeners \
+            --load-balancer-arn ${{ steps.infra.outputs.alb_arn }} \
+            --query 'Listeners[?Port==`80`].ListenerArn' \
+            --output text | head -1)
+          
+          if [ ! -z "$LISTENER_ARN" ] && [ "$LISTENER_ARN" != "None" ]; then
+            echo "Updating ALB listener..."
+            aws elbv2 modify-listener \
+              --listener-arn $LISTENER_ARN \
+              --default-actions Type=forward,TargetGroupArn=$TG_ARN
+          fi
+        fi
+        
+    - name: Register Task Definition
+      run: |
+        echo "📝 Registering task definition..."
+        
+        # Create CloudWatch log group
+        aws logs create-log-group --log-group-name /ecs/$ECS_SERVICE 2>/dev/null || true
+        
+        # Ensure IAM role exists
+        aws iam get-role --role-name ecsTaskExecutionRole 2>/dev/null || \
+        aws iam create-role --role-name ecsTaskExecutionRole \
+          --assume-role-policy-document '{
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }]
+          }' && \
+        aws iam attach-role-policy \
+          --role-name ecsTaskExecutionRole \
+          --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        
+        # Create task definition
+        cat > task-definition.json <<EOF
+        {
+          "family": "$TASK_FAMILY",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "512",
+          "memory": "1024",
+          "executionRoleArn": "arn:aws:iam::${{ steps.infra.outputs.account_id }}:role/ecsTaskExecutionRole",
+          "containerDefinitions": [
+            {
+              "name": "$CONTAINER_NAME",
+              "image": "${{ steps.build.outputs.image_uri }}",
+              "portMappings": [
+                {
+                  "containerPort": 80,
+                  "protocol": "tcp"
+                }
+              ],
+              "essential": true,
+              "environment": [
+                {
+                  "name": "REACT_APP_API_URL",
+                  "value": "${{ steps.infra.outputs.backend_url }}"
+                }
+              ],
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "/ecs/$ECS_SERVICE",
+                  "awslogs-region": "$AWS_REGION",
+                  "awslogs-stream-prefix": "ecs"
+                }
+              }
+            }
+          ]
+        }
+        EOF
+        
+        aws ecs register-task-definition --cli-input-json file://task-definition.json
+        
+    - name: Create ECS Service
+      run: |
+        echo "🚀 Creating ECS service..."
+        
+        # Delete existing service if any
+        aws ecs delete-service \
+          --cluster $ECS_CLUSTER \
+          --service $ECS_SERVICE \
+          --force 2>/dev/null || true
+        
+        sleep 10
+        
+        # Create new service
+        aws ecs create-service \
+          --cluster $ECS_CLUSTER \
+          --service-name $ECS_SERVICE \
+          --task-definition $TASK_FAMILY \
+          --desired-count 1 \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={
+            subnets=[${{ steps.infra.outputs.subnet_1 }},${{ steps.infra.outputs.subnet_2 }}],
+            securityGroups=[${{ steps.security.outputs.security_group }}],
+            assignPublicIp=ENABLED
+          }" \
+          --load-balancers "targetGroupArn=${{ steps.target.outputs.target_group_arn }},containerName=$CONTAINER_NAME,containerPort=80" \
+          --health-check-grace-period-seconds 120
+        
+        echo "⏳ Waiting for service to stabilize..."
+        aws ecs wait services-stable \
+          --cluster $ECS_CLUSTER \
+          --services $ECS_SERVICE \
+          --region $AWS_REGION || echo "Service is taking time to stabilize..."
+        
+    - name: Deployment Summary
+      if: always()
+      run: |
+        echo "📊 Deployment Summary"
+        echo "===================="
+        echo "Image: ${{ steps.build.outputs.image_uri || 'Not built' }}"
+        echo "Frontend URL: http://${{ steps.infra.outputs.alb_dns || 'No ALB found' }}"
+        echo "Backend URL: ${{ steps.infra.outputs.backend_url }}"
+        echo ""
+        
+        # Get service status
+        SERVICE_STATUS=$(aws ecs describe-services \
+          --cluster $ECS_CLUSTER \
+          --services $ECS_SERVICE \
+          --query 'services[0].{desired:desiredCount,running:runningCount,status:status}' \
+          --output json 2>/dev/null || echo "{}")
+        
+        echo "Service Status:"
+        echo "$SERVICE_STATUS" | jq '.'
+        
+        echo ""
+        echo "Monitor in AWS Console:"
+        echo "https://console.aws.amazon.com/ecs/home?region=$AWS_REGION#/clusters/$ECS_CLUSTER/services/$ECS_SERVICE/tasks"
