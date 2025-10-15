@@ -1,0 +1,97 @@
+# AWS Commands to Create ECS Service Properly
+
+# Run these commands in your AWS CLI or CloudShell:
+
+# 1. Get VPC and Subnets
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query 'Vpcs[0].VpcId' --output text --region ap-south-1)
+SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[0:2].SubnetId' --output text --region ap-south-1)
+SUBNET_1=$(echo $SUBNETS | cut -d' ' -f1)
+SUBNET_2=$(echo $SUBNETS | cut -d' ' -f2)
+
+echo "VPC: $VPC_ID"
+echo "Subnets: $SUBNET_1, $SUBNET_2"
+
+# 2. Create Security Group
+SG_ID=$(aws ec2 create-security-group \
+  --group-name frontend-manual-$(date +%s) \
+  --description "Frontend manual deployment" \
+  --vpc-id $VPC_ID \
+  --query 'GroupId' \
+  --output text \
+  --region ap-south-1)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID \
+  --protocol tcp \
+  --port 80 \
+  --cidr 0.0.0.0/0 \
+  --region ap-south-1
+
+echo "Security Group: $SG_ID"
+
+# 3. Create Target Group
+TG_ARN=$(aws elbv2 create-target-group \
+  --name frontend-$(date +%s | tail -c 8) \
+  --protocol HTTP \
+  --port 80 \
+  --vpc-id $VPC_ID \
+  --target-type ip \
+  --health-check-path / \
+  --query 'TargetGroups[0].TargetGroupArn' \
+  --output text \
+  --region ap-south-1)
+
+echo "Target Group: $TG_ARN"
+
+# 4. Get ALB and Listener
+ALB_ARN=$(aws elbv2 describe-load-balancers \
+  --names sabpaisa-tokenization-alb \
+  --query 'LoadBalancers[0].LoadBalancerArn' \
+  --output text \
+  --region ap-south-1)
+
+LISTENER_ARN=$(aws elbv2 describe-listeners \
+  --load-balancer-arn $ALB_ARN \
+  --query 'Listeners[?Port==`80`].ListenerArn' \
+  --output text \
+  --region ap-south-1 | head -1)
+
+echo "ALB: $ALB_ARN"
+echo "Listener: $LISTENER_ARN"
+
+# 5. Add Listener Rule
+PRIORITY=$((RANDOM % 50000 + 1))
+aws elbv2 create-rule \
+  --listener-arn $LISTENER_ARN \
+  --priority $PRIORITY \
+  --conditions Field=path-pattern,Values="/*" \
+  --actions Type=forward,TargetGroupArn=$TG_ARN \
+  --region ap-south-1
+
+echo "Added listener rule with priority $PRIORITY"
+
+# 6. Delete old service if exists
+aws ecs delete-service \
+  --cluster sabpaisa-tokenization-cluster \
+  --service sabpaisa-tokenization-frontend \
+  --force \
+  --region ap-south-1 2>/dev/null || true
+
+sleep 10
+
+# 7. Create ECS Service
+aws ecs create-service \
+  --cluster sabpaisa-tokenization-cluster \
+  --service-name sabpaisa-tokenization-frontend \
+  --task-definition sabpaisa-tokenization-frontend \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SG_ID],assignPublicIp=ENABLED}" \
+  --load-balancers "targetGroupArn=$TG_ARN,containerName=frontend,containerPort=80" \
+  --health-check-grace-period-seconds 120 \
+  --region ap-south-1
+
+echo ""
+echo "✅ Service created!"
+echo "Frontend will be available at: http://sabpaisa-tokenization-alb-685117879.ap-south-1.elb.amazonaws.com"
+echo "Wait 2-3 minutes for the service to become healthy."
