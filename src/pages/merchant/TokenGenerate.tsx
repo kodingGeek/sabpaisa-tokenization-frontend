@@ -26,13 +26,12 @@ import {
 import { CreditCard, Security } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import tokenizationService from '../../services/tokenizationService';
-import merchantService, { MerchantSummary } from '../../services/merchantService';
+import { useMerchant } from '../../contexts/MerchantContext';
 
 const TokenGenerate: React.FC = () => {
+  const { merchants, selectedMerchantId, loading: loadingMerchants } = useMerchant();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [merchants, setMerchants] = useState<MerchantSummary[]>([]);
-  const [loadingMerchants, setLoadingMerchants] = useState(false);
   
   // Store form data in state instead of react-hook-form
   const [formData, setFormData] = useState({
@@ -44,7 +43,7 @@ const TokenGenerate: React.FC = () => {
     tokenType: 'FPT',
     purpose: 'ECOMMERCE',
     domain: '',
-    merchantId: '',
+    merchantId: selectedMerchantId || '',
     customerId: '',
     customerEmail: '',
     customerPhone: '',
@@ -58,31 +57,12 @@ const TokenGenerate: React.FC = () => {
   
   const [tokenResult, setTokenResult] = useState<any>(null);
   
-  // Fetch active merchants
+  // Update merchantId when selectedMerchantId changes
   useEffect(() => {
-    fetchMerchants();
-  }, []);
-
-  const fetchMerchants = async () => {
-    setLoadingMerchants(true);
-    try {
-      const response = await merchantService.getAllMerchants({
-        status: 'ACTIVE',
-        page: 0,
-        size: 100
-      });
-      setMerchants(response.merchants);
-      
-      // Auto-select first merchant if only one exists
-      if (response.merchants.length === 1) {
-        setFormData(prev => ({ ...prev, merchantId: response.merchants[0].merchantId }));
-      }
-    } catch (error) {
-      toast.error('Failed to load merchants');
-    } finally {
-      setLoadingMerchants(false);
+    if (selectedMerchantId) {
+      setFormData(prev => ({ ...prev, merchantId: selectedMerchantId }));
     }
-  };
+  }, [selectedMerchantId]);
 
   const steps = ['Card Details', 'Algorithm & Configuration', 'Additional Details', 'Review & Generate', 'Token Generated'];
 
@@ -174,7 +154,7 @@ const TokenGenerate: React.FC = () => {
                   {!loadingMerchants && merchants.length === 0 && (
                     <MenuItem value="" disabled>No active merchants available</MenuItem>
                   )}
-                  {merchants.map((merchant) => (
+                  {merchants.map((merchant: any) => (
                     <MenuItem key={merchant.merchantId} value={merchant.merchantId}>
                       {merchant.businessName} ({merchant.merchantId})
                     </MenuItem>

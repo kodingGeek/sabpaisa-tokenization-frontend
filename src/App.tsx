@@ -15,6 +15,7 @@ import SecurityHeaders from './components/security/SecurityHeaders';
 import { themes, createCustomTheme } from './themes/themes';
 import './i18n/i18n'; // Initialize i18n
 import { AppThemeProvider } from './contexts/ThemeContext';
+import { MerchantProvider } from './contexts/MerchantContext';
 
 // Lazy load pages for better performance
 const Landing = lazy(() => import('./pages/Landing'));
@@ -135,11 +136,12 @@ const App: React.FC = () => {
         <AppThemeProvider currentTheme={currentThemeId} onThemeChange={handleThemeChange}>
           <ErrorBoundary>
             <SecurityProvider>
-              <SecurityHeaders />
-              <SessionTimeout />
-              <Router>
-              <Suspense fallback={<LoadingScreen />}>
-                <Routes>
+              <MerchantProvider>
+                <SecurityHeaders />
+                <SessionTimeout />
+                <Router>
+                <Suspense fallback={<LoadingScreen />}>
+                  <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Login />} />
@@ -247,6 +249,7 @@ const App: React.FC = () => {
               pauseOnHover
               theme="light"
               />
+              </MerchantProvider>
             </SecurityProvider>
           </ErrorBoundary>
         </AppThemeProvider>

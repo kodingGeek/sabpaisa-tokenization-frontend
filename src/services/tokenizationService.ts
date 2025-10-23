@@ -1,7 +1,8 @@
 import axios from 'axios';
+import env from '../config/environment';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8082/api/v1';
-const API_V2_BASE_URL = process.env.REACT_APP_API_V2_BASE_URL || 'http://localhost:8082/api/v2';
+const API_BASE_URL = env.API_BASE_URL;
+const API_V2_BASE_URL = env.API_V2_BASE_URL;
 
 export interface TokenizeRequest {
   cardNumber: string;

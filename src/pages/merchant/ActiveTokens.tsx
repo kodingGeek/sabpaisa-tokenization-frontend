@@ -43,12 +43,14 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import tokenizationService, { TokenInfo } from '../../services/tokenizationService';
+import { useMerchant } from '../../contexts/MerchantContext';
 
 interface TokenRow extends TokenInfo {
   id: string;
 }
 
 const ActiveTokens: React.FC = () => {
+  const { merchants, selectedMerchantId, selectMerchant, loading: loadingMerchants } = useMerchant();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedToken, setSelectedToken] = useState<TokenRow | null>(null);
@@ -65,6 +67,8 @@ const ActiveTokens: React.FC = () => {
 
   // Fetch tokens from API
   const fetchTokens = async () => {
+    if (!selectedMerchantId) return;
+    
     setLoading(true);
     try {
       const response = await tokenizationService.getAllTokens({
@@ -72,7 +76,7 @@ const ActiveTokens: React.FC = () => {
         size: paginationModel.pageSize,
         sortBy: 'createdAt',
         sortDirection: 'DESC',
-        merchantId: 'MERCH001' // TODO: Get from user context
+        merchantId: selectedMerchantId
       });
       
       const tokenRows: TokenRow[] = response.tokens.map((token, index) => ({
@@ -91,8 +95,10 @@ const ActiveTokens: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchTokens();
-  }, [paginationModel]);
+    if (selectedMerchantId) {
+      fetchTokens();
+    }
+  }, [paginationModel, selectedMerchantId]);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, token: TokenRow) => {
     setAnchorEl(event.currentTarget);
@@ -263,6 +269,26 @@ const ActiveTokens: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box display="flex" gap={2} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 250 }}>
+              <InputLabel>Select Merchant</InputLabel>
+              <Select
+                value={selectedMerchantId}
+                onChange={(e) => selectMerchant(e.target.value)}
+                label="Select Merchant"
+                disabled={loadingMerchants}
+              >
+                {loadingMerchants && <MenuItem value=""><CircularProgress size={20} /></MenuItem>}
+                {!loadingMerchants && merchants.length === 0 && (
+                  <MenuItem value="" disabled>No active merchants available</MenuItem>
+                )}
+                {merchants.map((merchant: any) => (
+                  <MenuItem key={merchant.merchantId} value={merchant.merchantId}>
+                    {merchant.businessName} ({merchant.merchantId})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
             <TextField
               placeholder="Search by token or card number..."
               variant="outlined"
@@ -270,6 +296,7 @@ const ActiveTokens: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{ flexGrow: 1 }}
+              disabled={!selectedMerchantId}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -326,23 +353,33 @@ const ActiveTokens: React.FC = () => {
 
       <Card>
         <Box style={{ height: 600, width: '100%' }}>
-          <DataGrid
-            rows={filteredTokens}
-            columns={columns}
-            loading={loading}
-            checkboxSelection
-            disableRowSelectionOnClick
-            onRowSelectionModelChange={(selection) => setSelectedRows(selection as string[])}
-            rowSelectionModel={selectedRows}
-            slots={{
-              toolbar: GridToolbar,
-            }}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[10, 25, 50]}
-            rowCount={totalElements}
-            paginationMode="server"
-          />
+          {!selectedMerchantId ? (
+            <Box display="flex" alignItems="center" justifyContent="center" height="100%">
+              <Alert severity="info" sx={{ maxWidth: 400 }}>
+                <Typography variant="body1">
+                  Please select a merchant to view their active tokens
+                </Typography>
+              </Alert>
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredTokens}
+              columns={columns}
+              loading={loading}
+              checkboxSelection
+              disableRowSelectionOnClick
+              onRowSelectionModelChange={(selection) => setSelectedRows(selection as string[])}
+              rowSelectionModel={selectedRows}
+              slots={{
+                toolbar: GridToolbar,
+              }}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[10, 25, 50]}
+              rowCount={totalElements}
+              paginationMode="server"
+            />
+          )}
         </Box>
       </Card>
 
