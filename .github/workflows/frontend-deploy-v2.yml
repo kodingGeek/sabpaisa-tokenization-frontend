@@ -155,7 +155,7 @@ jobs:
         aws ec2 authorize-security-group-ingress \
           --group-id $SG_ID \
           --protocol tcp \
-          --port 3000 \
+          --port 80 \
           --cidr 0.0.0.0/0
         
         echo "security_group=$SG_ID" >> $GITHUB_OUTPUT
@@ -182,7 +182,7 @@ jobs:
               "name": "$CONTAINER_NAME",
               "image": "${{ steps.docker.outputs.image_uri }}",
               "portMappings": [{
-                "containerPort": 3000,
+                "containerPort": 80,
                 "protocol": "tcp"
               }],
               "essential": true,
@@ -193,7 +193,7 @@ jobs:
                 },
                 {
                   "name": "PORT",
-                  "value": "3000"
+                  "value": "80"
                 },
                 {
                   "name": "REACT_APP_API_BASE_URL",
@@ -213,7 +213,7 @@ jobs:
                 }
               },
               "healthCheck": {
-                "command": ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"],
+                "command": ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"],
                 "interval": 30,
                 "timeout": 10,
                 "retries": 3,
@@ -252,16 +252,59 @@ jobs:
             --desired-count 1 \
             --launch-type FARGATE \
             --network-configuration "$NETWORK_CONFIG" \
-            --load-balancers "targetGroupArn=${{ steps.infra.outputs.target_group_arn }},containerName=$CONTAINER_NAME,containerPort=3000"
+            --load-balancers "targetGroupArn=${{ steps.infra.outputs.target_group_arn }},containerName=$CONTAINER_NAME,containerPort=80"
         else
-          echo "Updating existing service..."
-          # Update existing service
-          aws ecs update-service \
+          echo "Service exists. Checking for port changes..."
+          
+          # Get current service configuration
+          CURRENT_PORT=$(aws ecs describe-services \
             --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
-            --task-definition $TASK_FAMILY \
-            --force-new-deployment \
-            --network-configuration "$NETWORK_CONFIG"
+            --services $ECS_SERVICE \
+            --query 'services[0].loadBalancers[0].containerPort' \
+            --output text 2>/dev/null || echo "NONE")
+          
+          if [ "$CURRENT_PORT" != "80" ] && [ "$CURRENT_PORT" != "NONE" ]; then
+            echo "Port change detected (current: $CURRENT_PORT, new: 80). Recreating service..."
+            
+            # Scale down existing service
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER \
+              --service $ECS_SERVICE \
+              --desired-count 0 \
+              --force-new-deployment
+            
+            # Wait for tasks to stop
+            echo "Waiting for existing tasks to stop..."
+            sleep 30
+            
+            # Delete the existing service
+            aws ecs delete-service \
+              --cluster $ECS_CLUSTER \
+              --service $ECS_SERVICE \
+              --force
+            
+            echo "Waiting for service deletion..."
+            sleep 15
+            
+            # Create new service with correct port
+            aws ecs create-service \
+              --cluster $ECS_CLUSTER \
+              --service-name $ECS_SERVICE \
+              --task-definition $TASK_FAMILY \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --network-configuration "$NETWORK_CONFIG" \
+              --load-balancers "targetGroupArn=${{ steps.infra.outputs.target_group_arn }},containerName=$CONTAINER_NAME,containerPort=80"
+          else
+            echo "Updating existing service..."
+            # Update existing service
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER \
+              --service $ECS_SERVICE \
+              --task-definition $TASK_FAMILY \
+              --force-new-deployment \
+              --network-configuration "$NETWORK_CONFIG"
+          fi
         fi
         
         echo "✅ Frontend service deployed"
