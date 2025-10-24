@@ -14,8 +14,8 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Set build-time environment variables
-ARG REACT_APP_API_URL=http://localhost:8080/tokenization-backend
-ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ARG REACT_APP_API_BASE_URL=http://localhost:8080/api/v1
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
 
 # Build the application
 # Disable CI mode to prevent treating warnings as errors
