@@ -57,8 +57,8 @@ jobs:
           --query 'Parameter.Value' \
           --output text)
         
-        # Backend URL is the ALB DNS with /api/v1 path
-        BACKEND_URL="$ALB_DNS/api/v1"
+        # Backend URL is the ALB DNS with /api/api/v1 path (ALB /api + backend context /api)
+        BACKEND_URL="$ALB_DNS/api/api/v1"
         
         if [[ -z "$BACKEND_URL" ]]; then
           echo "❌ Backend URL not found. Please run infrastructure setup first."
@@ -105,17 +105,17 @@ jobs:
         
         # Create .env file for build with the actual ALB DNS
         cat > .env <<EOF
-        REACT_APP_API_BASE_URL=http://${{ steps.infra.outputs.alb_dns }}/api/v1
+        REACT_APP_API_BASE_URL=http://${{ steps.infra.outputs.alb_dns }}/api/api/v1
         REACT_APP_ENV=$ENV_NAME
         REACT_APP_API_VERSION=v1
         EOF
         
-        echo "Building frontend with API URL: http://${{ steps.infra.outputs.alb_dns }}/api/v1"
+        echo "Building frontend with API URL: http://${{ steps.infra.outputs.alb_dns }}/api/api/v1"
         echo "Building frontend image: $IMAGE_URI"
         
         # Build Docker image
         docker build \
-          --build-arg REACT_APP_API_BASE_URL=http://${{ steps.infra.outputs.alb_dns }}/api/v1 \
+          --build-arg REACT_APP_API_BASE_URL=http://${{ steps.infra.outputs.alb_dns }}/api/api/v1 \
           --build-arg REACT_APP_ENV=$ENV_NAME \
           -t $IMAGE_URI .
         
@@ -197,7 +197,7 @@ jobs:
                 },
                 {
                   "name": "REACT_APP_API_BASE_URL",
-                  "value": "http://${{ steps.infra.outputs.alb_dns }}/api/v1"
+                  "value": "http://${{ steps.infra.outputs.alb_dns }}/api/api/v1"
                 },
                 {
                   "name": "REACT_APP_ENV",
@@ -324,7 +324,7 @@ jobs:
         echo "Environment: ${{ github.event.inputs.environment }}"
         echo "Docker Image: ${{ steps.docker.outputs.image_uri || 'Not built' }}"
         echo "ECS Service: $ECS_SERVICE"
-        echo "Backend URL: http://${{ steps.infra.outputs.alb_dns }}/api/v1"
+        echo "Backend URL: http://${{ steps.infra.outputs.alb_dns }}/api/api/v1"
         echo ""
         
         # Get service details
@@ -341,7 +341,7 @@ jobs:
         echo "🌐 Access URLs:"
         echo "=============="
         echo "Frontend URL: http://${{ steps.infra.outputs.alb_dns }}"
-        echo "Backend API: http://${{ steps.infra.outputs.alb_dns }}/api/v1"
+        echo "Backend API: http://${{ steps.infra.outputs.alb_dns }}/api/api/v1"
         echo ""
         echo "📋 AWS Console Links:"
         echo "===================="
