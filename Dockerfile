@@ -25,7 +25,10 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 # Skip TypeScript checking during build
 ENV SKIP_PREFLIGHT_CHECK=true
 ENV TSC_COMPILE_ON_ERROR=true
-RUN npm run build
+RUN npm run build || { echo "Build failed! Checking for common issues..."; ls -la; npm ls; exit 1; }
+
+# Verify build output
+RUN ls -la build/ && echo "Build directory created successfully"
 
 # Production stage
 FROM nginx:alpine
@@ -71,5 +74,16 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port 80
 EXPOSE 80
 
+# Create a startup script for better debugging
+RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+    echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \
+    echo 'echo "Checking nginx configuration..."' >> /docker-entrypoint.sh && \
+    echo 'nginx -t' >> /docker-entrypoint.sh && \
+    echo 'echo "Content in /usr/share/nginx/html:"' >> /docker-entrypoint.sh && \
+    echo 'ls -la /usr/share/nginx/html/' >> /docker-entrypoint.sh && \
+    echo 'echo "Starting nginx in foreground..."' >> /docker-entrypoint.sh && \
+    echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
+
 # Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/docker-entrypoint.sh"]
