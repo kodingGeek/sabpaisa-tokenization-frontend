@@ -68,7 +68,12 @@ export const MerchantProvider: React.FC<MerchantProviderProps> = ({ children }) 
     setError(null);
     try {
       const response = await merchantService.getAllMerchants({ page: 0, size: 100 });
-      const activeMerchants = response.merchants.filter((m: any) => m.status === 'ACTIVE');
+      const activeMerchants = response.merchants
+        .filter((m: any) => m.status === 'ACTIVE')
+        .map((m: any) => ({
+          ...m,
+          phoneNumber: m.phoneNumber || m.phone || '', // Add phoneNumber with fallback
+        }));
       setMerchants(activeMerchants);
       
       // Auto-select based on localStorage or if only one merchant
