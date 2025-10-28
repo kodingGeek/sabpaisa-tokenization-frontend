@@ -39,7 +39,7 @@ import {
   CloudSync as CloudSyncIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
-import { Gauge, RadialLinearScale } from 'react-chartjs-2';
+// Removed unused imports from react-chartjs-2
 
 interface QuantumMetrics {
   quantumReadinessScore: number;
