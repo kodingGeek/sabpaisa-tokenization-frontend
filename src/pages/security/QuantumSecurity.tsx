@@ -224,8 +224,8 @@ const QuantumSecurity: React.FC = () => {
               <Chip
                 label={metrics.threatLevel}
                 color={getThreatColor(metrics.threatLevel) as any}
-                size="large"
-                sx={{ mt: 1, mb: 1 }}
+                size="medium"
+                sx={{ mt: 1, mb: 1, fontSize: '1.1rem', padding: '6px 16px' }}
               />
               <Typography variant="body2" color="textSecondary">
                 Est. Threat: {metrics.estimatedQuantumThreat}
