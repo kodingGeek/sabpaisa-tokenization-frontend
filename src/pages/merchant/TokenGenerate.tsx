@@ -450,10 +450,20 @@ const TokenGenerate: React.FC = () => {
                   expiryMonth: '',
                   expiryYear: '',
                   cardholderName: '',
+                  algorithmType: 'SIMPLE',
                   tokenType: 'FPT',
                   purpose: 'ECOMMERCE',
                   domain: '',
-                  merchantId: merchants.length === 1 ? merchants[0].merchantId : ''
+                  merchantId: merchants.length === 1 ? merchants[0].merchantId : '',
+                  customerId: '',
+                  customerEmail: '',
+                  customerPhone: '',
+                  transactionId: '',
+                  transactionAmount: '',
+                  transactionCurrency: 'INR',
+                  isCof: false,
+                  cofContractId: '',
+                  cofInitialTransactionId: ''
                 });
                 setTokenResult(null);
               }}
